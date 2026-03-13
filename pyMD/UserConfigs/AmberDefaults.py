@@ -1,59 +1,67 @@
 import os
 
 class AmberConfig:
-    GPUPath:str = "" # Path to the GPU binary of AMBER
-    CPUPath:str = "" # Path to the CPU binary of AMBER
+    GPUPath: str = "" # Path to the GPU binary of AMBER
+    CPUPath: str = "" # Path to the CPU binary of AMBER
 
     ## IO options
-    ntpr:int = 100 # Frequency to write mdout energy
-    ntwx:int = 100 # Frequency to write to mdcrd trajectory file
-    ntwr:int = 100 # Frequency to update the restart file
-    ioutfm:int = 1 # Writes netCDF trajectories as binary 
-    iwrap:int = 1 # Wraps the trajectories into the "primary box"
+    ntpr: int = 100 # Frequency to write mdout energy
+    ntwx: int = 100 # Frequency to write to mdcrd trajectory file
+    ntwr: int = 100 # Frequency to update the restart file
+    ioutfm: int = 1 # Writes netCDF trajectories as binary 
+    iwrap: int = 1 # Wraps the trajectories into the "primary box"
 
     ## Minimisation options
-    maxcyc:int = 300 # Maximum number of minimisation steps
-    imin:int = 0 # Whether to run minimization or dynamics simulation
-    ncyc:int = 100 # When to swap from steepest-descent to conjugate gradient minimisation
-    ntmin:int = 1 # Type of minimisation to perform
+    maxcyc: int = 300 # Maximum number of minimisation steps
+    imin: int = 0 # Whether to run minimization or dynamics simulation
+    ncyc: int = 100 # When to swap from steepest-descent to conjugate gradient minimisation
+    ntmin: int = 1 # Type of minimisation to perform
 
     ## Simulation options
     
-    irest:int = 0 # Whether to restart the simulation, 0 = new simulation, 1 = continue simulation
-    cut:float = 8 # Non-bonded cutoff distance (Angstrom)
+    irest: int = 0 # Whether to restart the simulation, 0 = new simulation, 1 = continue simulation
+    cut: float = 8 # Non-bonded cutoff distance (Angstrom)
+    ntx: int = 1 # Whether to read coordinates and velocities from the restart file, 1 = no, 5 = yes
 
     ## Dynamics options
-    dt:float = 0.002 # Dynamics time step
-    nstlim:int = 1000 # Number of Molecular dynamics steps to perform
+    dt: float = 0.002 # Dynamics time step
+    nstlim: int = 1000 # Number of Molecular dynamics steps to perform
     ig: int = -1 # Initial seed. -1 is random
 
 
     ## Retraints and potentials
-    nct:int = 2 # Shake setting, 1 = No shake, 2 = X-H bonds, 3 = all bonds
-    ntf:int = 1 # Force evolution, 1=all forces, 2=all except H (NTC=2), 3=None (NTC=3)
-    jfastw:int = 0 # Fast water setting for shake, set to 4 if not desired
-    dielec:float = 1.0 # Dielectric constant for electrostatic interactions.
-    ntr:int = 0 # Toggles restraint_mask and restraint_wt
-    restraintmask:str = "'!(:WAT,NA,CL)'" # Restrain all atoms except for solvent & counter atoms
-    restraint_wt:float = 5.0 # Restrain with 5 kcal#mol potential
-    nmropt:int = 1 # NMR weights to be read
+    nct: int = 2 # Shake setting, 1 = No shake, 2 = X-H bonds, 3 = all bonds
+    ntf: int = 1 # Force evolution, 1=all forces, 2=all except H (NTC=2), 3=None (NTC=3)
+    jfastw: int = 0 # Fast water setting for shake, set to 4 if not desired
+    dielec: float = 1.0 # Dielectric constant for electrostatic interactions.
+    ntr: int = 0 # Toggles restraint_mask and restraint_wt
+    restraintmask: str = "'!(:WAT,NA,CL)'" # Restrain all atoms except for solvent & counter atoms
+    restraint_wt: float = 5.0 # Restrain with 5 kcal#mol potential
+    nmropt: int = 1 # NMR weights to be read
 
     ## Ensemble Settings
-    ntb:int = 0 # PBC control. 0=No periodicity, 1=constant volume, 2=constant pressure
+    ntb: int = 0 # PBC control. 0=No periodicity, 1=constant volume, 2=constant pressure
 
     ## Temperature Settings
-    ntt:int = 3 # Temperature scaling, 2=anderson, 3=Langevin, 9=Nose-Hoover, 11=Berendsen
-    temp0:float = 0.0 # Reference#Final temperature of the simulation
-    tempi:float = 0.0 # Initial temperature of the simulation
-    gamma_ln:float = 2.0 # Collision frequency
+    ntt: int = 3 # Temperature scaling, 2=anderson, 3=Langevin, 9=Nose-Hoover, 11=Berendsen
+    temp0: float = 300.0 # Final temperature of the simulation
+    tempi: float = 0.0 # Initial temperature of the simulation
+    gamma_ln: float = 2.0 # Collision frequency
 
     ## Pressure Settings
-    ntp:int = 0 # Pressure scaling, 1=isotropic (Recommended), 2=anisotropic, 3=semiisotropic, 4=targeted volume
-    barostat:int = 1 # Barostat, 1=Berendsen, 2=MonteCarlo
-    pres0:float = 1.0 # Reference pressure (bar)
+    ntp: int = 0 # Pressure scaling, 1=isotropic (Recommended), 2=anisotropic, 3=semiisotropic, 4=targeted volume
+    barostat: int = 1 # Barostat, 1=Berendsen, 2=MonteCarlo
+    pres0: float = 1.0 # Reference pressure (bar)
 
     ##### Do not edit beyond this point #####
-    _minimisation:bool = False
+    _minimisation: bool = False
+    _initialised: bool = False
+    _heating_steps: int = 1
+    _input_file_name: str 
+    _output_file_name: str
+    _param_file: str
+    _input_coord_file: str
+
 
     def __init__(self):
         if os.path.isfile(self.CPUPath) is False:
@@ -124,9 +132,6 @@ class AmberConfig:
         else:
             return False
 
-
-    
-    
     def _update_timestep(self, timestep:float=0.002):
         self.dt = timestep
 
@@ -171,6 +176,161 @@ class AmberConfig:
             except NameError:
                 del self.restraint_wt
 
+    def set_temperature(self, temperature: float):
+        """Sets the temperature for the simulation
+
+        Args:
+            temperature (float): Temperature in Kelvin
+        """
+        assert temperature >= 0, f"ERROR: Cannot have a negative temperature, {temperature} not allowed"
+        self.set_heating(start_temp=temperature, end_temp=temperature, nsteps=1)
+
+    def set_heating(self, start_temp: float = 0.0, end_temp: float = 300.0, nsteps: int = 1):
+        """Sets the configuration to run a heating simulation
+        
+        Args:
+            start_temp (float, optional): Starting temperature of the simulation. Defaults to 0.0 K.
+            end_temp (float, optional): Final temperature of the simulation. Defaults to 300.0 K.
+            nsteps (int, optional): Number of steps to heat for. Defaults to 1.
+        """
+        self.temp0 = end_temp
+        self.tempi = start_temp
+        self._heating_steps = nsteps
+        
+    def restart_dynamics(self, restart: bool|int = True):
+        """Sets whether to restart the dynamics simulation or not
+
+        Args:
+            restart (bool, optional): Whether to restart the simulation or not. Defaults to True. (Can also supply irest as 0/1 for backwards compatibility)
+        """
+        if type(restart) == int:
+            if restart == 0:
+                restart = False
+            elif restart == 1:
+                restart = True
+            else:
+                raise ValueError(f"ERROR: Restart must be a boolean or 0/1, {restart} not allowed")
+            
+        if restart:
+            self.irest = 1
+            self.ntx = 5
+        else:
+            self.irest = 0
+            self.ntx = 1
+
+    def set_thermostat(self, thermostat: int|str):
+        """Sets the thermostat for the simulation.
+
+        Args:
+            thermostat (int | str): Thermostat to use for the simulation. Can be supplied as a string or an int. Allowed thermostats are: "none"/0, "anderson"/2, "langevin"/3, "nose_hoover"/9, "berendsen"/11
+
+        """
+        if isinstance(thermostat, str):
+            thermostat = THERMOSTATS.get(thermostat.casefold())
+            if thermostat is None:
+                raise ValueError(f"Thermostat {thermostat} not recognised, known thermostats are: {list(THERMOSTATS.keys())}")
+        elif isinstance(thermostat, int):
+            if thermostat not in THERMOSTATS.values():
+                raise ValueError(f"Thermostat {thermostat} not recognised, known thermostats are: {list(THERMOSTATS.values())}")
+        self.ntt = thermostat
+
+    def set_pressure_scaling(self, pressure_scaling: int|str):
+        """Sets the pressure scaling for the simulation
+
+        Args:
+            pressure_scaling (int | str): Pressure scaling algoithm to use. Can be supplied as a string or an int. Allowed values are: "none"/0, "isotropic"/1, "anisotropic"/2, "semiisotropic"/3, "target_volume"/41
+        """
+        if isinstance(pressure_scaling, str):
+            pressure_scaling = PRESSURE_SCALING.get(pressure_scaling.casefold())
+            if pressure_scaling is None:
+                raise ValueError(f"Pressure scaling {pressure_scaling} not recognised, known pressure scalings are: {list(PRESSURE_SCALING.keys())}")
+        elif isinstance(pressure_scaling, int):
+            if pressure_scaling not in PRESSURE_SCALING.values():
+                raise ValueError(f"Pressure scaling {pressure_scaling} not recognised, known pressure scalings are: {list(PRESSURE_SCALING.values())}")
+        self.ntp = pressure_scaling
+
+    def set_ensemble(self, ensemble: str):
+        """
+        Initialise an ensemble for the simulation. Allowed ensembles are: min, heat, nvt, npt
+
+        Args:
+            ensemble (str): The ensemble to use for the simulation. Allowed ensembles are: min, heat, nvt, npt
+        """
+        ensemble = ensemble.casefold()
+        knownEnsembles = ["min", "heat", "nvt", "npt"]
+        if ensemble not in knownEnsembles:
+            raise ValueError(f"Ensemble {ensemble} not recognised, known ensembles are: {knownEnsembles}")
+        if ensemble == "min":
+            ensemble = 0
+        elif ensemble == "heat":
+            ensemble = 1
+        elif ensemble == "nvt":
+            ensemble = 1
+        elif ensemble == "npt":
+            ensemble = 2
+        self.ntb = ensemble
+
+    def set_barostat(self, barostat: int|str):
+        """Sets the barostat for the simulation
+
+        Args:
+            barostat (int | str): Barostat to use for the simulation. Can be supplied as a string or an int. Allowed values are: "berendsen"/1, "monte_carlo"/2
+        """
+        if isinstance(barostat, str):
+            barostat = BAROSTATS.get(barostat.casefold())
+            if barostat is None:
+                raise ValueError(f"Barostat {barostat} not recognised, known barostats are: {list(BAROSTATS.keys())}")
+        elif isinstance(barostat, int):
+            if barostat not in BAROSTATS.values():
+                raise ValueError(f"Barostat {barostat} not recognised, known barostats are: {list(BAROSTATS.values())}")
+        self.barostat = barostat
+
+    def set_pressure(self, pressure: float):
+        """Sets the pressure for the simulation
+
+        Args:
+            pressure (float): Pressure in bar
+        """
+        assert pressure >= 0, f"ERROR: Cannot have a negative pressure, {pressure} not allowed"
+        self.pres0 = pressure
+
+    def gen_input_file(self, filename: str):
+        """Generates an AMBER input file from the current configuration
+
+        Args:
+            filename (str): The name of the input file to generate
+        
+        Returns:
+            list[str]: The lines of the input file to write
+        """
+
+        header = f"{filename} Generated by pyMD, CopyRight (C) 2026 Ross Amory\n&cntrl"
+        config = self.to_dict()
+        body = [f"{key} = {value}" for key, value in config.items()]
+        footer = "/"
+
+        if "tempi" in config and "temp0" in config: # Add the heating section if we are heating
+            if config["tempi"] != config["temp0"]:
+                footer += f"""
+&wt type'TEMP0' istep1=0, istep2={self._heating_steps}, value1={self.tempi}, value2={self.temp0} /
+&wt type 'TEMP0', istep1={int(self._heating_steps)+1}, istep2={self.maxcyc}, value1={self.temp0}, value2={self.temp0} /
+&wt  type='END' /
+"""
+        return [header] + body + [footer]
+
+    def set_calculation_variables(self, paramfile: str, input_coordinates: str, input_file_name: str, output_file_name: str):
+        """Sets some basic calculation information
+
+        Args:
+            paramfile (str): The parameter file to use for the simulation, usually a .parm7 file
+            input_coordinates (str): The coordinate file to use for the simulation, usually a .rst7 file
+            input_file_name (str): The name of the input file to generate
+            output_file_name (str): The name of the output file to generate
+        """
+        self._param_file = paramfile
+        self._input_coord_file = input_coordinates
+        self._input_file_name = input_file_name
+        self._output_file_name = output_file_name
 
 THERMOSTATS = dict(none = 0,
                    anderson = 2,
