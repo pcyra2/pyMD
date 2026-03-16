@@ -193,6 +193,8 @@ class AmberConfig:
             end_temp (float, optional): Final temperature of the simulation. Defaults to 300.0 K.
             nsteps (int, optional): Number of steps to heat for. Defaults to 1.
         """
+        if "ntt" not in self.to_dict().keys():
+            self.set_thermostat(self.ntt)
         self.temp0 = end_temp
         self.tempi = start_temp
         self._heating_steps = nsteps
@@ -247,6 +249,7 @@ class AmberConfig:
         elif isinstance(pressure_scaling, int):
             if pressure_scaling not in PRESSURE_SCALING.values():
                 raise ValueError(f"Pressure scaling {pressure_scaling} not recognised, known pressure scalings are: {list(PRESSURE_SCALING.values())}")
+        assert isinstance(pressure_scaling, int), "Pressure scaling should be an int."
         self.ntp = pressure_scaling
 
     def set_ensemble(self, ensemble: str):
@@ -292,6 +295,10 @@ class AmberConfig:
             pressure (float): Pressure in bar
         """
         assert pressure >= 0, f"ERROR: Cannot have a negative pressure, {pressure} not allowed"
+        if "barostat" not in self.to_dict().keys():
+            self.set_barostat(self.barostat)
+        if "ntp" not in self.to_dict().keys():
+            self.set_pressure_scaling(self.ntp)
         self.pres0 = pressure
 
     def gen_input_file(self, filename: str):

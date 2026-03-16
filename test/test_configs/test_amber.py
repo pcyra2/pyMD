@@ -1,7 +1,9 @@
 from pyMD.UserConfigs.AmberDefaults import AmberConfig
 
 import os
+import pytest 
 
+@pytest.mark.skip(reason="Currently dont have an environment with amber")
 def test_paths():
     config = AmberConfig()
     assert os.path.isfile(config.CPUPath), "CPU version of amber is not found"
@@ -37,9 +39,42 @@ def test_dynamics_toggle():
     assert config.nct == 2
 
 
+def test_temperature_controls():
+    config = AmberConfig()
+    config.set_heating(0, 300, 100)
+    assert config.tempi == 0
+    assert config.temp0 == 300
+    assert config._heating_steps == 100
+    config.set_heating(100, 150, 20)
+    assert config.tempi == 100
+    assert config.temp0 == 150
+    assert config._heating_steps == 20
+    config.set_temperature(120)
+    assert config.tempi == 120
+    assert config.temp0 == 120
+    assert "ntt" in config.to_dict().keys()
+    config.set_thermostat("nose_hoover")
+    assert config.ntt == 9
+    config.set_thermostat(2)
+    assert config.ntt == 2
+
+
+def test_pressure_controls():
+    config = AmberConfig()
+    config.set_pressure(2.1)
+    assert config.pres0 == 2.1
+    assert "barostat" in config.to_dict().keys()
+    assert "ntp" in config.to_dict().keys()
+    config.set_barostat("monte_carlo")
+    assert config.barostat == 2
+    config.set_barostat(1)
+    assert config.barostat == 1
+
+
+
 def test_me():
     config = AmberConfig()
     print(config.to_dict())
     config.barostat = 1
-    print(config.to_dict)
+    print(config.to_dict())
     assert False

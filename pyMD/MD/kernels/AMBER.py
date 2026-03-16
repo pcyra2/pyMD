@@ -1,17 +1,15 @@
 from pyMD.UserConfigs.AmberDefaults import AmberConfig, THERMOSTATS, BAROSTATS, PRESSURE_SCALING
-from pyMD.MD.kernels.universal import JobClass
+from pyMD.MD.kernels.universal import MDJobClass
 
 
 import subprocess
-
+import os
 
 class Amber:
     defaults: AmberConfig
-    config: AmberConfig|None
+    config: AmberConfig
     parmfile: str
-    cores: int
-    jobs: list[JobClass]
-    
+    cores: int    
 
     def __init__(self, config: AmberConfig = AmberConfig()):
         self.defaults = config.copy()
@@ -38,7 +36,11 @@ class Amber:
         Returns:
             outlines (str): The CLI output from runnning the command.
         """
-        
+        inputfile = self.config.gen_input_file(input_file_name)
+        if os.path.isfile(os.path.join(path, input_file_name)) is False:
+            with open(os.path.join(path, input_file_name), "w") as f:
+                f.writelines(inputfile)
+
         command = self._gen_runlines(input_file_name=input_file_name, input_structure_name=input_structure_name, output_file_name=output_file_name, gpu=gpu)
             
         print(f"INFO: Running command: {command}")
@@ -235,6 +237,6 @@ class Amber:
 
     def make_job(self, input_file_name: str, input_coord_file: str, output_file_name: str, path: str = "./"):
         self.config.set_calculation_variables(self.parmfile, input_coord_file, input_file_name, output_file_name)
-        job = JobClass(inputfile_name=input_file_name, outputfile_name=output_file_name, run_path=path)
+        job = MDJobClass(inputfile_name=input_file_name, outputfile_name=output_file_name, run_path=path)
         file = self.config.gen_input_file(input_file_name)
         job.add_inputfile(file)
