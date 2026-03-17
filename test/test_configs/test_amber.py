@@ -1,4 +1,5 @@
 from pyMD.UserConfigs.AmberDefaults import AmberConfig
+from pyMD.MD.kernels.AMBER import Amber
 
 import os
 import pytest 
@@ -74,7 +75,7 @@ def test_pressure_controls():
 
 def test_me():
     config = AmberConfig()
-    print(config.to_dict())
-    config.barostat = 1
-    print(config.to_dict())
-    assert False
+    amber = Amber(config)
+    amber.set_ensemble(ensemble="min", steps = 100)
+    assert config._minimisation == amber.defaults._minimisation, "config should be the same as defaults."
+    assert config._minimisation != amber.config._minimisation, "config should be different to kernel, class copy is broken"

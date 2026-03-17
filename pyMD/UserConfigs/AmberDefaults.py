@@ -1,4 +1,6 @@
 import os
+import pyMD.tools.convert as convert
+
 
 class AmberConfig:
     GPUPath: str = "" # Path to the GPU binary of AMBER
@@ -24,7 +26,7 @@ class AmberConfig:
     ntx: int = 1 # Whether to read coordinates and velocities from the restart file, 1 = no, 5 = yes
 
     ## Dynamics options
-    dt: float = 0.002 # Dynamics time step
+    dt: float = 0.002 # Dynamics time step in picoseconds
     nstlim: int = 1000 # Number of Molecular dynamics steps to perform
     ig: int = -1 # Initial seed. -1 is random
 
@@ -71,7 +73,7 @@ class AmberConfig:
             print("WARNING: AMBER GPU path not found, please fix this to use amber CPU")
             print(self.GPUPath)
         
-    def set_timestep(self, timestep:float):
+    def set_timestep(self, timestep: float):
         """
 
         This method sets the time step for the simulation.
@@ -90,7 +92,7 @@ class AmberConfig:
         assert timestep > 0, f"ERROR: Cannot have a negative timestep: {timestep} not allowed"
         self.dt = timestep
 
-    def set_minimisation(self, steps_total:int, steps_steepest:int|None = None):
+    def set_minimisation(self, steps_total: int, steps_steepest: int|None = None):
         """Changes the configuration to run a minimisation rather than a dynamics simulation
 
         Args:
@@ -105,7 +107,7 @@ class AmberConfig:
         self.ncyc = steps_steepest
         self.maxcyc = steps_total
 
-    def set_dynamics(self, timestep:float=0.002, shake:int=1):
+    def set_dynamics(self, timestep:float = 0.002, shake: int = 1, timestep_units: str = "ps"):
         """Changes the configuration to run a dynamics simulation
         
         Args:
@@ -114,7 +116,7 @@ class AmberConfig:
         """
         self.imin = 0
         self._minimisation = False
-        self.dt = timestep
+        self._update_timestep(timestep, timestep_units)
         self.nct = shake
         if self._check_timestep_compatibility() == False:
             self.nct = 2
@@ -132,14 +134,15 @@ class AmberConfig:
         else:
             return False
 
-    def _update_timestep(self, timestep:float=0.002):
-        self.dt = timestep
+    def _update_timestep(self, timestep: float = 0.002, timestep_units: str = "ps"):
+        
+        self.dt = convert.time(timestep, timestep_units, "ps")
 
     def to_dict(self)->dict:
         """Returns a dictionary of the class attributes"""
         return {key:value for key, value in vars(self).items() if not key.startswith('_')}
     
-    def set_outputs(self, energy:int, restart:int, trajectory:int):
+    def set_outputs(self, energy: int, restart: int, trajectory: int):
         """Sets the output frequencies for the calculation. 
 
         Args:
@@ -151,12 +154,12 @@ class AmberConfig:
         self.ntwr = restart
         self.ntwx = trajectory
 
-    def set_restraints(self, restraint_mask:str, restraint_wt:float):
+    def set_restraints(self, restraint_mask: str|None, restraint_wt: float):
         """
         Allows for simple restraints using ambers selection algebra
 
         Args:
-            restraint_mask (str): Atom selection
+            restraint_mask (str|None): Atom selection
             restraint_wt (float, optional): Harmonic restraint weight. Defaults to 5.0.
         """
         if restraint_mask is not None:
@@ -166,15 +169,17 @@ class AmberConfig:
         else:
             self.ntr = 0
             try:
-                self.restraintmask
-            except NameError:
                 del self.restraintmask
+            except NameError:
+                # del self.restraintmask
+                pass
 
             
             try:
-                self.restraint_wt
-            except NameError:
                 del self.restraint_wt
+            except NameError:
+                # del self.restraint_wt
+                pass
 
     def set_temperature(self, temperature: float):
         """Sets the temperature for the simulation

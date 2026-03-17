@@ -1,9 +1,9 @@
 from pyMD.UserConfigs.AmberDefaults import AmberConfig, THERMOSTATS, BAROSTATS, PRESSURE_SCALING
-from pyMD.MD.kernels.universal import MDJobClass
 
 
 import subprocess
 import os
+import copy
 
 class Amber:
     defaults: AmberConfig
@@ -12,8 +12,8 @@ class Amber:
     cores: int    
 
     def __init__(self, config: AmberConfig = AmberConfig()):
-        self.defaults = config.copy()
-        self.config = config.copy()
+        self.defaults = copy.deepcopy(config)
+        self.config = copy.deepcopy(config)
     
     def _gen_runlines(self, input_file_name: str,  input_structure_name: str,output_file_name: str|None = None, gpu: bool = False):
         if output_file_name is None:
@@ -86,25 +86,25 @@ class Amber:
         """
         self.config.set_restraints(restraint_mask=restraint_mask, restraint_wt=restraint_wt)
 
-    def set_ensemble(self, **kwargs):
+    def set_ensemble(self, ensemble:str, steps: float,  **kwargs):
         """
         Initialise an ensemble for the simulation. Allowed ensembles are: min, heat, nvt, npt
         """
-        ensemble = kwargs["ensemble"].casefold()
+        ensemble = ensemble.casefold()
         knownEnsembles = ["min", "heat", "nvt", "npt"]
         if ensemble not in knownEnsembles:
             raise ValueError(f"Ensemble {ensemble} not recognised, known ensembles are: {knownEnsembles}")
         if ensemble == "min":
-            assert "steps" in kwargs, "Must provide number of steps for minimisation ensemble"
-            steps = kwargs["steps"]
+            # assert "steps" in kwargs, "Must provide number of steps for minimisation ensemble"
+            # steps = kwargs["steps"]
             if "steps_steepest" in kwargs:
                 steps_steepest = kwargs["steps_steepest"]
             else:
                 steps_steepest = None
             self.config.set_minimisation(steps, steps_steepest)            
         elif ensemble == "heat":
-            assert "steps" in kwargs, "Must provide number of steps for heating ensemble"
-            steps = kwargs["steps"]
+            # assert "steps" in kwargs, "Must provide number of steps for heating ensemble"
+            # steps = kwargs["steps"]
 
             ## Obtain thermostat, if not provided use default
             if "thermostat" in kwargs:
@@ -136,6 +136,8 @@ class Amber:
             self.config.set_heating(start_temp=start_temp, end_temp=end_temp, nsteps=heating_steps)
 
             if "timestep" in kwargs:
+                dt = kwargs["timestep"]
+            elif "time_step" in kwargs:
                 dt = kwargs["time_step"]
             else:                
                 dt = self.defaults.dt
@@ -147,8 +149,8 @@ class Amber:
 
             self.config.set_dynamics(timestep=dt, shake=shake)
         elif ensemble == "nvt":
-            assert "steps" in kwargs, "Must provide number of steps for heating ensemble"
-            steps = kwargs["steps"]
+            # assert "steps" in kwargs, "Must provide number of steps for heating ensemble"
+            # steps = kwargs["steps"]
 
             ## Obtain thermostat, if not provided use default
             if "thermostat" in kwargs:
@@ -184,8 +186,8 @@ class Amber:
             self.config.set_dynamics(timestep=dt, shake=shake)
             self.config.set_ensemble("nvt")
         elif ensemble == "npt":
-            assert "steps" in kwargs, "Must provide number of steps for npt ensemble"
-            steps = kwargs["steps"]
+            # assert "steps" in kwargs, "Must provide number of steps for npt ensemble"
+            # steps = kwargs["steps"]
 
             ## Obtain thermostat, if not provided use default
             if "thermostat" in kwargs:
@@ -235,8 +237,5 @@ class Amber:
             self.config.set_dynamics(timestep=dt, shake=shake)
             self.config.set_ensemble("npt")
 
-    def make_job(self, input_file_name: str, input_coord_file: str, output_file_name: str, path: str = "./"):
-        self.config.set_calculation_variables(self.parmfile, input_coord_file, input_file_name, output_file_name)
-        job = MDJobClass(inputfile_name=input_file_name, outputfile_name=output_file_name, run_path=path)
-        file = self.config.gen_input_file(input_file_name)
-        job.add_inputfile(file)
+    def _reset_config(self):
+        self.config = copy.deepcopy(self.defaults)
