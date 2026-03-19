@@ -1,6 +1,6 @@
 import json
 import os
-
+import shutil
 
 def textDump(text:list[str]|str, path:str):
     """Prints a text file, 
@@ -11,7 +11,7 @@ def textDump(text:list[str]|str, path:str):
     """
     with open(path, "w")as f:
         if type(text) == str:
-            print(text, file=f)
+            print(text, file=f, end="")
         else:
             for i in text:
                 print(i, file=f)
@@ -105,3 +105,14 @@ def MakeDir(path: str):
     except FileExistsError:
         print(f"INFO: {path} already exists")
         pass
+
+def RemoveDir(path: str, force: bool = True):
+    """Removes directory in path if it exists, irrespective of contents."""
+    if os.path.isdir(path):
+        if force == False:
+            try:
+                os.removedirs(path)
+            except OSError:
+                print(f"WARNING: {path} is not empty")
+        else:
+            shutil.rmtree(path)

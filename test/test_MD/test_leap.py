@@ -1,6 +1,8 @@
 import pyMD.tools.io as io
 import pyMD.MD.utilities.parameterise as parameterise
+
 import subprocess
+
 
 test_pdb = "1N23"
 test_pdb_location = "https://files.rcsb.org/download/1N23.pdb"
