@@ -64,7 +64,7 @@ class MDJobClass:
         """Swaps the job back to a CPU job
         """
         self.GPU = False
-
+    
     def exe(self, GPU: bool|None = None):
         
         if GPU is not None and GPU == True:
@@ -75,10 +75,21 @@ class MDJobClass:
         self.runline = self.kernel._gen_runlines(input_file_name=self.inputfile_name, 
                                                 input_structure_name=self.input_structure,
                                                 output_file_name=self.outputfile_name, 
-                                                GPU=self.GPU)
+                                                gpu=self.GPU)
+        if self.GPU:
+            if os.path.isfile(self.kernel.config.GPUPath) == False:
+                assert os.path.isfile(self.kernel.config.CPUPath)
+                self.to_cpu()
+        else:
+            assert os.path.isfile(self.kernel.config.CPUPath)
+            
 
         start = time.perf_counter()
-        self.kernel.exec(self.inputfile_name, self.outputfile_name, self.input_structure, self.run_path, self.GPU)        
+        self.kernel.exec(input_file_name=self.inputfile_name, 
+                        output_file_name=self.outputfile_name, 
+                        input_structure_name=self.input_structure, 
+                        path=self.run_path, 
+                        gpu=self.GPU)        
         stop = time.perf_counter()
         self.complete = True
         self.wall_time = stop - start

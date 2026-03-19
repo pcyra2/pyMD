@@ -4,7 +4,7 @@ import pyMD.tools.convert as convert
 
 class AmberConfig:
     GPUPath: str = "" # Path to the GPU binary of AMBER
-    CPUPath: str = "" # Path to the CPU binary of AMBER
+    CPUPath: str = "/home/ross/Software/miniconda3/envs/pyMD/bin/sander" # Path to the CPU binary of AMBER
 
     ## IO options
     ntpr: int = 100 # Frequency to write mdout energy

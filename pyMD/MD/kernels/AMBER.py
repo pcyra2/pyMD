@@ -41,6 +41,8 @@ class Amber:
             with open(os.path.join(path, input_file_name), "w") as f:
                 f.writelines(inputfile)
 
+        assert os.path.isfile(os.path.join(path, input_structure_name)), f"Input structure file is not found: {input_structure_name}"
+
         command = self._gen_runlines(input_file_name=input_file_name, input_structure_name=input_structure_name, output_file_name=output_file_name, gpu=gpu)
             
         print(f"INFO: Running command: {command}")
@@ -86,7 +88,7 @@ class Amber:
         """
         self.config.set_restraints(restraint_mask=restraint_mask, restraint_wt=restraint_wt)
 
-    def set_ensemble(self, ensemble:str, steps: float,  **kwargs):
+    def set_ensemble(self, ensemble:str, steps: int,  **kwargs):
         """
         Initialise an ensemble for the simulation. Allowed ensembles are: min, heat, nvt, npt
         """
@@ -174,6 +176,8 @@ class Amber:
             self.config.set_pressure_scaling(0) # No pressure scaling for NVT ensemble
 
             if "timestep" in kwargs:
+                dt = kwargs["timestep"]
+            elif "time_step" in kwargs:
                 dt = kwargs["time_step"]
             else:                
                 dt = self.defaults.dt
@@ -219,6 +223,8 @@ class Amber:
             self.config.set_temperature(temp)
 
             if "timestep" in kwargs:
+                dt = kwargs["timestep"]
+            elif "time_step" in kwargs:
                 dt = kwargs["time_step"]
             else:                
                 dt = self.defaults.dt

@@ -1,5 +1,6 @@
 import pyMD.tools.convert as convert
 import numpy
+import pytest
 
 def test_time_converter():
     seconds = 120
@@ -8,7 +9,8 @@ def test_time_converter():
     assert convert.time(seconds, "seconds", "minutes" ) == minutes
     assert convert.time(minutes, "min", "hr") == hours
     assert convert.time(hours, "hr", "s") == seconds
-    assert convert.get_time("angstrom") == "angstrom"
+    with pytest.raises(AssertionError): # This should raise an Assertation error
+        convert.get_time("angstrom") 
 
 def test_step_converter():
     steps = 5000 # 5000 steps should be 10 ps in 2 fs time steps

@@ -18,10 +18,13 @@ TIME_UNITS = [timeClass("seconds", "s", 1.0),
 
 def get_time(unit:str)->timeClass:
     unit = unit.casefold()
+    tmp = None
     for times in TIME_UNITS:
         if unit == times.name or unit == times.short_hand:
-            return times
-    return unit
+            tmp = times
+    assert isinstance(tmp, timeClass), f"Units {unit} not recognised"
+    return tmp
+
 
 def time(in_time: float = 1, in_unit: str = "s", out_unit: str = "s")->float:
     """Converts units of time
@@ -35,13 +38,10 @@ def time(in_time: float = 1, in_unit: str = "s", out_unit: str = "s")->float:
         float: time in the specified unit
     """
 
-    in_unit = get_time(in_unit)
-    out_unit =  get_time(out_unit)
+    in_unit_time = get_time(in_unit)
+    out_unit_time =  get_time(out_unit)
     
-    assert isinstance(in_unit, timeClass), f"Units {in_unit} not recognised"
-    assert isinstance(out_unit, timeClass), f"Units {out_unit} not recognised"
-
-    return (in_time * in_unit.relative_value)/out_unit.relative_value
+    return (in_time * in_unit_time.relative_value)/out_unit_time.relative_value
             
 
 def steps_to_time(steps: int,  time_units: str = "s", timestep: float = 0.002, timestep_units: str = "ps")->float:
@@ -57,11 +57,10 @@ def steps_to_time(steps: int,  time_units: str = "s", timestep: float = 0.002, t
     Returns:
         float: total time
     """
-    time_units = get_time(time_units)
-
-    assert isinstance(time_units, timeClass), f"Units {time_units} not recognised"
+    _time_units = get_time(time_units)
     
-    return (steps*time(timestep, timestep_units))/time_units.relative_value
+    return (steps*time(timestep, timestep_units))/_time_units.relative_value
+
 
 def time_to_steps(sim_time: float, time_units: str = "ps", timestep: float = time(2,"fs"),  timestep_units: str = "ps")->int:
     """

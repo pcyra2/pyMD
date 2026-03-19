@@ -8,7 +8,8 @@ setup(
         'console_scripts': [
         ],
     },
-    install_requires=["pyscf", "rdkit", "spyrmsd", 
+    install_requires=["pyscf", "rdkit", "spyrmsd", "matplotlib",
                       "plotly", "pyscf-dispersion", "h5py",
-                      "pytest", "pytest-cov", "pytest-html"]
+                      "pytest", "pytest-cov", "pytest-html",
+                      "pytest-subprocess"]
 )

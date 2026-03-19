@@ -4,11 +4,11 @@ from pyMD.MD.kernels.AMBER import Amber
 import os
 import pytest 
 
-@pytest.mark.skip(reason="Currently dont have an environment with amber")
+# @pytest.mark.skip(reason="Currently dont have an environment with amber")
 def test_paths():
     config = AmberConfig()
+    
     assert os.path.isfile(config.CPUPath), "CPU version of amber is not found"
-    assert os.path.isfile(config.GPUPath), "GPU version of amber is not found"
 
 def test_minimisation_toggle():
     config = AmberConfig()

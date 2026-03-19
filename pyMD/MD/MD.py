@@ -83,7 +83,7 @@ class MDClass:
             end_temperature: float = 300, 
             restraints: str|None = None, 
             timestep: float = convert.time(2, in_unit="fs", out_unit="ps"), 
-            thermostat: str|None = None,
+            thermostat: str|int|None = None,
             traj_out: int = 100,
             energy_out: int = 10,
             restart_out: int = 10,
@@ -121,5 +121,48 @@ class MDClass:
                       output_file_name=job_name,
                       input_structure=input_structure,
                       run_path=path)
+        self.current_job.to_gpu()
         self.jobs.append(self.current_job)
 
+    def constant(self, 
+            input_structure: str,
+            job_name: str,
+            steps: int,
+            temperature: float = 300.0,
+            thermostat: str|int|None = None,
+            pressure: float|None = None, 
+            barostat: str|int|None = None,
+            restraints: str|None = None,
+            timestep: float = convert.time(2, in_unit="fs", out_unit="ps"),
+            path: str = "./",
+            traj_out: int = 100,
+            energy_out: int = 10,
+            restart_out: int = 10,
+            ):
+        if pressure is not None:
+            ensemble = "npt"
+            if barostat is None:
+                barostat = self.kernel.defaults.barostat
+        else:
+            ensemble = "nvt"
+
+        
+        self.kernel.set_ensemble(ensemble = ensemble, 
+                                steps=steps, 
+                                temperature = temperature,
+                                thermostat = thermostat,
+                                pressure = pressure,
+                                barostat = barostat,
+                                timestep = timestep
+                                )
+        if restraints is not None:
+            self.kernel.set_restraints(restraints)
+        self.kernel.set_outputs(energy_out, restart_out, traj_out)
+
+        self.make_job(input_file_name=job_name,
+                      output_file_name=job_name,
+                      input_structure=input_structure,
+                      run_path=path)
+        self.current_job.to_gpu()
+
+        self.jobs.append(self.current_job)

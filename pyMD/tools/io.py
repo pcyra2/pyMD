@@ -70,7 +70,7 @@ def jsonRead(path:str)->dict:
     return text
 
 
-def parse_float_keys(dct:dict)->float|str:
+def parse_float_keys(dct:dict)->dict:
     """Enables float keys in json files by converting them from strings.
 
 
