@@ -1,9 +1,23 @@
 
 class timeClass:
+    """time class. Used for quick convertion of time units
+    
+    Attributes:
+        name (str): name of the unit
+        short_hand (str): short-hand name of the unit. (i.e. nanoseconds = ns)
+        relative_value (float): Length of time relative to seconds. (i.e. 1 ns = 1e-9 s)
+    """
     name: str
     short_hand: str
     relative_value: float
     def __init__(self, name: str, short_hand: str, relative_value: float):
+        """Initialises the timeClass
+    
+        Args:
+            name (str): name of the unit
+            short_hand (str): short-hand name of the unit. (i.e. nanoseconds = ns)
+            relative_value (float): Length of time relative to seconds. (i.e. 1 ns = 1e-9 s)
+        """
         self.name = name
         self.short_hand = short_hand
         self.relative_value = relative_value
@@ -17,6 +31,14 @@ TIME_UNITS = [timeClass("seconds", "s", 1.0),
         timeClass("femtoseconds", "fs", 1e-15)]
 
 def get_time(unit:str)->timeClass:
+    """Used as a helper function to find the timeClass object.
+    
+    Args:
+        unit (str): Unit, either the full name, or the short-hand notation.
+
+    Returns:
+        timeClass: the timeClass object.
+    """
     unit = unit.casefold()
     tmp = None
     for times in TIME_UNITS:

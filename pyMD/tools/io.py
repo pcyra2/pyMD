@@ -107,7 +107,12 @@ def MakeDir(path: str):
         pass
 
 def RemoveDir(path: str, force: bool = True):
-    """Removes directory in path if it exists, irrespective of contents."""
+    """Removes directory in path if it exists, irrespective of contents.
+    
+    Args:
+        path (str): Directory path
+        force (bool, optional): Whether to forcibly remove a directory if it is not empty. Defaults to True
+    """
     if os.path.isdir(path):
         if force == False:
             try:
