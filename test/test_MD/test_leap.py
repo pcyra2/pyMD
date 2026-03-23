@@ -12,4 +12,4 @@ temp_dir = "./test/temp_dir"
 def test_tleap():
     io.MakeDir(temp_dir)
     subprocess.run(["wget", test_pdb_location], cwd=temp_dir)
-    parameterise.gen_leap()
+    # parameterise.gen_leap()

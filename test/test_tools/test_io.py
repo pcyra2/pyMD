@@ -4,7 +4,7 @@ import os
 
 
 temp_dir = "./test/temp_dir"
-
+file_loc = "./test/test_data/"
 
 def test_make_dir():
     assert os.path.isdir(temp_dir) == False
@@ -53,3 +53,9 @@ def test_dict_io():
     
 	assert test_dict == test_dict_read
 	io.RemoveDir(temp_dir, force=True)
+
+
+def test_grep():
+	correct_example = io.textRead(os.path.join(file_loc, "2BN.pdb"))
+	grepped = io.grep(os.path.join(file_loc, "1N23.pdb"), "2BN")
+	assert grepped == correct_example

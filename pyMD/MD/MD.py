@@ -118,9 +118,9 @@ class MDClass:
         self.kernel.set_outputs(energy_out, restart_out, traj_out)
         
         self.make_job(input_file_name=job_name,
-                      output_file_name=job_name,
-                      input_structure=input_structure,
-                      run_path=path)
+                    output_file_name=job_name,
+                    input_structure=input_structure,
+                    run_path=path)
         self.current_job.to_gpu()
         self.jobs.append(self.current_job)
 
@@ -160,9 +160,9 @@ class MDClass:
         self.kernel.set_outputs(energy_out, restart_out, traj_out)
 
         self.make_job(input_file_name=job_name,
-                      output_file_name=job_name,
-                      input_structure=input_structure,
-                      run_path=path)
+                    output_file_name=job_name,
+                    input_structure=input_structure,
+                    run_path=path)
         self.current_job.to_gpu()
 
         self.jobs.append(self.current_job)

@@ -7,14 +7,14 @@ import os
 import numpy
 
 KNOWN_FORCEFIELDS = dict(ff14SB = dict(phosaa = "phosaa14SB",
-                                       water = "TIP3P",
-                                       waterff = "leaprc.water.tip3p",
-                                       waterfix = ""), 
+                                    water = "TIP3P",
+                                    waterff = "leaprc.water.tip3p",
+                                    waterfix = ""), 
                         ff19SB = dict(phosaa = "phosaa19SB",
-                                       water = "OPC",
-                                       waterff = "leaprc.water.opc",
-                                       waterfix = "set default FlexibleWater on")
-                                       )
+                                    water = "OPC",
+                                    waterff = "leaprc.water.opc",
+                                    waterfix = "set default FlexibleWater on")
+                                    )
 
 def gen_gaussian(mol: molecule, proc: int=12, mem: int=10):
     
@@ -48,12 +48,12 @@ NTA esp
     return file
 
 def gen_leap(LigCode:str, 
-             pdb_file:str, 
-             parmfile: str, 
-             ambercoor: str = "start.rst7", 
-             forcefield: str = "ff14SB", 
-             box: float = 12.0
-             ):
+            pdb_file:str, 
+            parmfile: str, 
+            ambercoor: str = "start.rst7", 
+            forcefield: str = "ff14SB", 
+            box: float = 12.0
+            ):
     assert forcefield in KNOWN_FORCEFIELDS.keys(), f"ERROR: Forcefield {forcefield} unknown"
 
     file = f"""source leaprc.protein.{forcefield}

@@ -1,0 +1,28 @@
+REMARK 800 SITE_DESCRIPTION: BINDING SITE FOR RESIDUE 2BN A 801                 
+REMARK 800 SITE_DESCRIPTION: BINDING SITE FOR RESIDUE 2BN B 802                 
+HET    2BN  A 801      10                                                       
+HET    2BN  B 802      10                                                       
+HETNAM     2BN (1R,4S)-2-AZABORNANE                                             
+FORMUL   6  2BN    2(C9 H17 N)                                                  
+SITE     3 AC9 20  MG A 701   MG A 702   MG A 703  2BN A 801                    
+SITE     3 BC1 20  MG B 704   MG B 705   MG B 706  2BN B 802                    
+HETATM 8748  C2  2BN A 801      42.921  46.723  48.677  1.00 33.19           C  
+HETATM 8749  N3  2BN A 801      43.432  47.968  48.037  1.00 34.71           N  
+HETATM 8750  C4  2BN A 801      43.892  47.654  46.812  1.00 35.24           C  
+HETATM 8751  C5  2BN A 801      43.630  46.129  46.735  1.00 35.21           C  
+HETATM 8752  C6  2BN A 801      44.739  45.515  47.653  1.00 33.52           C  
+HETATM 8753  C7  2BN A 801      44.227  45.941  49.068  1.00 34.59           C  
+HETATM 8754  C8  2BN A 801      42.317  45.915  47.509  1.00 35.58           C  
+HETATM 8755  C9  2BN A 801      41.050  46.495  46.850  1.00 32.74           C  
+HETATM 8756  C10 2BN A 801      41.980  44.439  47.848  1.00 31.73           C  
+HETATM 8757  C11 2BN A 801      42.030  46.963  49.864  1.00 35.83           C  
+HETATM 8770  C2  2BN B 802      35.287  41.125   1.805  1.00 29.32           C  
+HETATM 8771  N3  2BN B 802      33.978  40.681   2.396  1.00 30.99           N  
+HETATM 8772  C4  2BN B 802      34.198  40.296   3.673  1.00 29.26           C  
+HETATM 8773  C5  2BN B 802      35.717  40.538   3.836  1.00 29.39           C  
+HETATM 8774  C6  2BN B 802      36.378  39.373   3.057  1.00 27.25           C  
+HETATM 8775  C7  2BN B 802      36.086  39.787   1.573  1.00 29.47           C  
+HETATM 8776  C8  2BN B 802      36.008  41.796   2.989  1.00 31.40           C  
+HETATM 8777  C9  2BN B 802      35.391  43.096   3.517  1.00 27.10           C  
+HETATM 8778  C10 2BN B 802      37.510  42.116   2.748  1.00 28.63           C  
+HETATM 8779  C11 2BN B 802      35.144  41.911   0.527  1.00 25.56           C  

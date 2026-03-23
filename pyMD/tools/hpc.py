@@ -22,12 +22,12 @@ class partitionClass:
     name: str
 
     def __init__(self, name: str, 
-                 cpus_per_node: int, 
-                 gpus_per_node: int, 
-                 mem_per_node: int,
-                 nodes: int, 
-                 walltime: int,
-                 qos: str|None = None) -> None:
+                cpus_per_node: int, 
+                gpus_per_node: int, 
+                mem_per_node: int,
+                nodes: int, 
+                walltime: int,
+                qos: str|None = None) -> None:
         """Defines the default data for a HPC SLURM partition.
         
         Args:
@@ -104,18 +104,18 @@ class slurm:
     """Contains information for a slurm job. This allows for checking that the configuration is allowed. 
 
     Attributes:
-       hpc (HPC): HPC to use
-       partition (partitionClass): Partition to use
-       time (int): Job Wall time in hours
-       name (str): Name of the job
-       nodes (int): Number of nodes to use
-       mem (int): Memory per node in GB
-       gpus (int): Number of gpus to use
-       modules (list[str]): Modules to load using the "modules system"
-       array (bool): Whether to use an array job
-       array_len (int):
-       array_file (str): File to use for the array job
-       tasks_pn (int): slurm NTASKS_PER_NODE variable
+        hpc (HPC): HPC to use
+        partition (partitionClass): Partition to use
+        time (int): Job Wall time in hours
+        name (str): Name of the job
+        nodes (int): Number of nodes to use
+        mem (int): Memory per node in GB
+        gpus (int): Number of gpus to use
+        modules (list[str]): Modules to load using the "modules system"
+        array (bool): Whether to use an array job
+        array_len (int):
+        array_file (str): File to use for the array job
+        tasks_pn (int): slurm NTASKS_PER_NODE variable
     """
     hpc: HPC = ADA
     partition: partitionClass  = ADA.partitions["defq"]
@@ -147,7 +147,7 @@ class slurm:
         """Sets the maximum ammount of time for the slurm job. 
 
         Args:
-           time (int): Maximum time for the slurm job.
+            time (int): Maximum time for the slurm job.
         """
         assert time <= self.partition.walltime, f"Time {time} exceeds max walltime for partition {self.partition} on HPC {self.hpc}."
         self.time = time
@@ -176,7 +176,7 @@ class slurm:
         """Allocates the memory for the job.
 
         Args:
-           mem (int): Memory to allocate for the job.
+            mem (int): Memory to allocate for the job.
         """
         assert mem <= self.partition.mem_per_node, f"Memory {mem} exceeds max memory for partition {self.partition} on HPC {self.hpc}."
         self.mem = mem
@@ -185,7 +185,7 @@ class slurm:
     def set_gpus(self, gpus:int):
         """Allocates the number of GPUs for the job
 
-       Args:
+        Args:
             gpus (int): Number of GPU's for the job.
         """
         assert gpus <= self.partition.gpus_per_node, f"GPUs {gpus} exceeds max GPUs for partition {self.partition} on HPC {self.hpc}."

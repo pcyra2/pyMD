@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import re
 
 def textDump(text:list[str]|str, path:str):
     """Prints a text file, 
@@ -121,3 +122,13 @@ def RemoveDir(path: str, force: bool = True):
                 print(f"WARNING: {path} is not empty")
         else:
             shutil.rmtree(path)
+
+def grep(file:str, string: str):
+    contents = textRead(file)
+    regexp = re.compile(string)
+    lines = []
+    for line in contents:
+        if re.search(regexp, line):
+            print(line)
+            lines.append(line)
+    return lines
