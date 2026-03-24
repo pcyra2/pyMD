@@ -1,17 +1,19 @@
+"""#TODO
+"""
 import json
 import os
 import shutil
 import re
 
-def textDump(text:list[str]|str, path:str):
+def text_dump(text: list[str]|str, path: str):
     """Prints a text file, 
 
     Args:
         text (str|list[str]): accepts either array of text or string.
         path (str): file path to write to. 
     """
-    with open(path, "w")as f:
-        if type(text) == str:
+    with open(path, "w", encoding="UTF-8")as f:
+        if isinstance(text, str):
             print(text, file=f, end="")
         else:
             for i in text:
@@ -19,7 +21,7 @@ def textDump(text:list[str]|str, path:str):
         f.close()
 
 
-def textRead(path:str)->list[str]:
+def text_read(path: str)->list[str]:
     """Reads in a text file as a list of lines.
 
     Args:
@@ -27,51 +29,52 @@ def textRead(path:str)->list[str]:
     Returns:
         text (list[str]): list of lines in the file.
     """
-    with open(path, "r") as f:
+    with open(path, "r", encoding="UTF-8") as f:
         text = f.readlines()
         f.close()
     clean = [line.replace("\n","") for line in text]
     return clean
 
 
-def jsonDump(dict:dict, path:str,):
+def json_dump(data: dict, path: str,):
     """
-    The function `jsonDump` takes a dictionary and a file path as input, then writes the dictionary to a
-    JSON file at the specified path.
+    The function `jsonDump` takes a dictionary and a file path as input, then writes 
+    the dictionary to a JSON file at the specified path.
     
     Args:
-        dict (dict): A dictionary containing the data that you want to dump into a JSON file.
-        path (str): The `path` parameter in the `jsonDump` function is a string that represents the file
-    path where the JSON data will be dumped or saved. It should be the location where you want to store
-    the JSON data.
+        data (dict): A dictionary containing the data that you want to dump into a JSON file.
+        path (str): The `path` parameter in the `jsonDump` function is a string that 
+        represents the file path where the JSON data will be dumped or saved. It should 
+        be the location where you want to store the JSON data.
     """
     try:
-        with open(path, "w") as f:
-            json.dump(dict, f, indent="\t", sort_keys=True, )
+        with open(path, "w", encoding="UTF-8") as f:
+            json.dump(data, f, indent="\t", sort_keys=True, )
     except TypeError:
-        with open(path, "w") as f:
-            json.dump(dict, f, indent="\t",)
+        with open(path, "w", encoding="UTF-8") as f:
+            json.dump(data, f, indent="\t",)
 
 
-def jsonRead(path:str)->dict:
+def json_read(path: str)->dict:
     """
-    The function `jsonRead` reads and returns the content of a JSON file located at the specified path.
+    The function `jsonRead` reads and returns the content of a JSON 
+    file located at the specified path.
     
     Args:
-        path (str): The `path` parameter in the `jsonRead` function is a string that represents the file
-    path to the JSON file that you want to read and load.
+        path (str): The `path` parameter in the `jsonRead` function is a string that represents
+        the file path to the JSON file that you want to read and load.
     
     Returns:
-        text (dict): The function `jsonRead` reads a JSON file located at the specified `path` and returns the contents
-    of the file as a Python dictionary.
+        text (dict): The function `jsonRead` reads a JSON file located at the specified `path`
+        and returns the contents of the file as a Python dictionary.
     """
-    with open(path, "r") as f:
+    with open(path, "r", encoding="UTF-8") as f:
         text = json.load(f, object_hook=parse_float_keys)
         f.close()
     return text
 
 
-def parse_float_keys(dct:dict)->dict:
+def parse_float_keys(dct: dict)->dict:
     """Enables float keys in json files by converting them from strings.
 
 
@@ -79,7 +82,7 @@ def parse_float_keys(dct:dict)->dict:
         dct (dict): Dictionary to parse
 
     Returns:
-        float|str: Dictionary with float keys where possible.
+        rval (float|str): Dictionary with float keys where possible.
     """
     rval = dict()
     for key, val in dct.items():
@@ -94,7 +97,7 @@ def parse_float_keys(dct:dict)->dict:
     return rval
 
 
-def MakeDir(path: str):
+def make_dir(path: str):
     """Makes directory in path if it doesn't already exist
 
     Args:
@@ -105,9 +108,8 @@ def MakeDir(path: str):
         os.mkdir(path)
     except FileExistsError:
         print(f"INFO: {path} already exists")
-        pass
 
-def RemoveDir(path: str, force: bool = True):
+def remove_dir(path: str, force: bool = True):
     """Removes directory in path if it exists, irrespective of contents.
     
     Args:
@@ -115,7 +117,7 @@ def RemoveDir(path: str, force: bool = True):
         force (bool, optional): Whether to forcibly remove a directory if it is not empty. Defaults to True
     """
     if os.path.isdir(path):
-        if force == False:
+        if force is False:
             try:
                 os.removedirs(path)
             except OSError:
@@ -123,8 +125,18 @@ def RemoveDir(path: str, force: bool = True):
         else:
             shutil.rmtree(path)
 
-def grep(file:str, string: str):
-    contents = textRead(file)
+def grep(file: str, string: str) -> list[str]:
+    """
+    a function that should act like the bash 'grep' command.
+
+    Args:
+        file (str): File to grep.
+        string (str): Pattern to grep.
+
+    Returns:
+        lines (list[str]): Lines containing grep pattern.
+    """
+    contents = text_read(file)
     regexp = re.compile(string)
     lines = []
     for line in contents:

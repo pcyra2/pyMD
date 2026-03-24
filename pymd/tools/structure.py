@@ -1,4 +1,6 @@
-class atom:
+"""#TODO
+"""
+class Atom:
     """Class containing atom information
     
     Attributes:
@@ -32,7 +34,7 @@ class atom:
     def echo(self):
         """Prints the coordinates of the atom in .xyz format."""
         return f"{self.element} {self.x} {self.y} {self.z}"
-    
+
 
     def translate_x(self, distance: float):
         """Translates the atom in the x-direction by the given distance
@@ -60,7 +62,7 @@ class atom:
         """
         self.z += distance
 
-    
+
     def add_atom_type(self, atom_type: str):
         """Allows for allocating atom types to an atom for use in a forcefield.
         
@@ -69,29 +71,28 @@ class atom:
         """
         self.atom_type = atom_type
 
-class molecule:
+class Molecule:
     """molecule class. Contains information about a given molecule
 
     Attributes:
         charge (int): net charge of the molecule
         spin (int): number of unpaired electrons (2S not 2S + 1)
-        atoms (list[atom]): List of atoms and their coordinates
+        atoms (list[Atom]): List of atoms and their coordinates
         nat (int): number of atoms in the molecule
     """
     charge: int
     spin: int
-    atoms: list[atom]
+    atoms: list[Atom]
     nat: int
 
     def __init__(self, ):
         """Initialises the molecule class. """
-        pass
 
-    def from_atoms_list(self, atoms: list[atom], charge: int, spin: int):
+    def from_atoms_list(self, atoms: list[Atom], charge: int, spin: int):
         """Initialises a molecule object from an atom list
         
         Args:
-            atoms (list[atom]): List of atoms
+            atoms (list[Atom]): List of atoms
             charge (int): net charge of the molecule
             spin (int): number of unpaired electrons (2S not 2S+1)
         """
@@ -109,19 +110,21 @@ class molecule:
             charge (int): net charge of the system
             spin (int): Spin of the system (2S not 2S+1)
         """
-        if type(lines) == str:
+        if isinstance(lines, str):
             lines = lines.split("\n")
         self.nat = int(lines[0])
         atoms = []*self.nat
         for i in range(self.nat):
             items = lines[i+2].split()
-            atoms[i] = atom(items[0], float(items[1]), float(items[2]), float(items[3]))
+            atoms[i] = Atom(items[0], float(items[1]), float(items[2]), float(items[3]))
         self.atoms = atoms
         self.charge = charge
         self.spin = spin
 
-    def print_coords(self)->str:
-        """Prints the coordinates of a molecule object in a format similar to the .xyz format, however without the top 2 lines containing the NAT or the name."""
+    def print_coords(self) -> str:
+        """Prints the coordinates of a molecule object in a format similar to the .xyz format, 
+        however without the top 2 lines containing the NAT or the name.
+        """
         text = ""
         for at in self.atoms:
             text += at.echo()+"\n"

@@ -1,4 +1,4 @@
-import pyMD.tools.convert as convert
+import pymd.tools.convert as convert
 import numpy
 import pytest
 

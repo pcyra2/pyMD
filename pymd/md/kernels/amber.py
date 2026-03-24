@@ -1,27 +1,41 @@
-from pyMD.UserConfigs.AmberDefaults import AmberConfig, THERMOSTATS, BAROSTATS, PRESSURE_SCALING
-
+"""#TODO
+"""
 
 import subprocess
 import os
 import copy
 
+from pymd.UserConfigs.AmberDefaults import AmberConfig
+
+
 class Amber:
+    """#TODO
+
+    """
     defaults: AmberConfig
     config: AmberConfig
     parmfile: str
-    cores: int    
+    cores: int
 
-    def __init__(self, config: AmberConfig = AmberConfig()):
+    def __init__(
+            self,
+            config: AmberConfig = AmberConfig()):
         self.defaults = copy.deepcopy(config)
         self.config = copy.deepcopy(config)
-    
-    def _gen_runlines(self, input_file_name: str,  input_structure_name: str, output_file_name: str|None = None, gpu: bool = False):
+
+    def _gen_runlines(
+            self,
+            input_file_name: str,
+            input_structure_name: str,
+            output_file_name: str|None = None,
+            gpu: bool = False):
         """Generates the command that runs the AMBER calculation
 
         Args:
             input_file_name (str): input file name without the extension.
-            input_structure_name (str): Name of coordinate file that the simulation is starting from.
-            output_file_name (str): Name of output file. Defaults to None, in which case it is the same as input_file_name. Defaults to None.
+            input_structure_name (str): Name of coordinate file that the simulation starts from.
+            output_file_name (str): Name of output file. Defaults to None, in which case it is 
+                the same as input_file_name. Defaults to None.
             gpu (bool): Whether to use the gpu or not. Defaults to False (sander).
         """
         if output_file_name is None:
@@ -31,7 +45,13 @@ class Amber:
         else:
             return f"sander -O -i {input_file_name}.in -c {input_structure_name} -r {self.parmfile} -o {output_file_name}.out -r {output_file_name}.rst7 -x {output_file_name}.nc"
 
-    def exec(self, input_file_name: str, output_file_name: str, input_structure_name: str, gpu: bool = False, path: str = "./"):
+    def exec(
+            self,
+            input_file_name: str,
+            output_file_name: str,
+            input_structure_name: str,
+            gpu: bool = False,
+            path: str = "./"):
         """
         Runs the amber software as part of the script.
     
@@ -58,7 +78,9 @@ class Amber:
             outlines = subprocess.run([command],stdout=f, cwd=path)
         return outlines
 
-    def set_global(self, parmfile: str):
+    def set_global(
+            self,
+            parmfile: str):
         """
         Defines the parameter and coordinate files for the initial structure. 
 
@@ -68,7 +90,11 @@ class Amber:
         self.parmfile = parmfile
 
 
-    def set_outputs(self, energy: int, restart: int,  trajectory: int):
+    def set_outputs(
+            self,
+            energy: int,
+            restart: int,
+            trajectory: int):
         """Sets the output frequencies for the calculation. 
 
         Args:
@@ -79,7 +105,9 @@ class Amber:
         self.config.set_outputs(restart=restart, energy=energy, trajectory=trajectory)
 
 
-    def set_cores(self, cores: int):
+    def set_cores(
+            self,
+            cores: int):
         """Sets the number of cores to use for the MD simulation
 
         Args:
@@ -105,9 +133,9 @@ class Amber:
         Initialise an ensemble for the simulation. Allowed ensembles are: min, heat, nvt, npt
         """
         ensemble = ensemble.casefold()
-        knownEnsembles = ["min", "heat", "nvt", "npt"]
-        if ensemble not in knownEnsembles:
-            raise ValueError(f"Ensemble {ensemble} not recognised, known ensembles are: {knownEnsembles}")
+        known_ensembles = ["min", "heat", "nvt", "npt"]
+        if ensemble not in known_ensembles:
+            raise ValueError(f"Ensemble {ensemble} not recognised, known ensembles are: {known_ensembles}")
         if ensemble == "min":
             # assert "steps" in kwargs, "Must provide number of steps for minimisation ensemble"
             # steps = kwargs["steps"]
@@ -115,7 +143,7 @@ class Amber:
                 steps_steepest = kwargs["steps_steepest"]
             else:
                 steps_steepest = None
-            self.config.set_minimisation(steps, steps_steepest)            
+            self.config.set_minimisation(steps, steps_steepest)
         elif ensemble == "heat":
             # assert "steps" in kwargs, "Must provide number of steps for heating ensemble"
             # steps = kwargs["steps"]
@@ -134,8 +162,9 @@ class Amber:
             ## Figure out how many steps to heat for, if not provided use default
             if "heating_steps" in kwargs:
                 heating_steps = kwargs["heating_steps"]
-            else:                
-                heating_steps = int(0.9*steps) ## By default, heat for 90% of the simulation, then run at constant temperature for the remaining 10%
+            else:
+                heating_steps = int(0.9*steps) ## By default, heat for 90% of the simulation, \
+                                                # then run at constant temperature for the remaining 10%
 
             ## Obtain the heating parameters, if not provided use defaults
             if "start_temp" in kwargs:

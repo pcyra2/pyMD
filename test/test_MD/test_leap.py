@@ -1,5 +1,5 @@
-import pyMD.tools.io as io
-import pyMD.MD.utilities.parameterise as parameterise
+import pymd.tools.io as io
+import pymd.MD.utilities.parameterise as parameterise
 
 import subprocess
 
@@ -10,6 +10,6 @@ temp_dir = "./test/temp_dir"
 
 
 def test_tleap():
-    io.MakeDir(temp_dir)
+    io.make_dir(temp_dir)
     subprocess.run(["wget", test_pdb_location], cwd=temp_dir)
     # parameterise.gen_leap()

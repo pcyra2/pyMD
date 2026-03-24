@@ -1,5 +1,5 @@
-from pyMD.UserConfigs.AmberDefaults import AmberConfig
-from pyMD.MD.kernels.AMBER import Amber
+from pymd.UserConfigs.AmberDefaults import AmberConfig
+from pymd.MD.kernels.amber import Amber
 
 import os
 import pytest 

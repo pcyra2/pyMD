@@ -1,9 +1,9 @@
 from setuptools import setup
 # set up using "pip install -e ."
 setup(
-    name='pyMD',
+    name='pymd',
     version='1.0',
-    py_modules=['pyMD'],
+    py_modules=['pymd'],
     entry_points={
         'console_scripts': [
         ],

@@ -1,6 +1,6 @@
-import pyMD.MD.recipies.standard_MD as standard_MD
-import pyMD.tools.io as io
-from pyMD.MD.MD import MDClass
+import pymd.MD.recipies.standard_md as standard_md
+import pymd.tools.io as io
+from pymd.MD.md import MDClass
 
 from pprint import pprint
 import pytest
@@ -12,15 +12,15 @@ temp_dir = "./test/temp_dir"
 commands = ["sander -O -i min1.in -c start.rst7 -r complex.parm7 -o min1.out -r min1.rst7 -x min1.nc"]
 
 def test_initialisation(fp):
-    io.MakeDir(temp_dir)
-    io.textDump("", os.path.join(temp_dir, "start.rst7") )
-    io.textDump("", os.path.join(temp_dir, "complex.parm7") )
+    io.make_dir(temp_dir)
+    io.text_dump("", os.path.join(temp_dir, "start.rst7") )
+    io.text_dump("", os.path.join(temp_dir, "complex.parm7") )
     fp.register(command=commands, stdout="This command was run", )
     MM = MDClass("AMBER")
     MM.set_parmfile("complex.parm7")
     MM.define_hardware(cpu=12)
 
-    MM = standard_MD.initialise_system(MM, path=temp_dir)
+    MM = standard_md.initialise_system(MM, path=temp_dir)
 
     pprint(vars(MM))
     pprint((MM.jobs[0].kernel.config.to_dict()))

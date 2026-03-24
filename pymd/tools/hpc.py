@@ -1,6 +1,8 @@
-import os 
+"""#TODO
+"""
+import os
 
-class partitionClass:
+class PartitionClass:
     """
     Defines the default data for a HPC SLURM partition.
         
@@ -21,11 +23,11 @@ class partitionClass:
     qos: str|None
     name: str
 
-    def __init__(self, name: str, 
-                cpus_per_node: int, 
-                gpus_per_node: int, 
+    def __init__(self, name: str,
+                cpus_per_node: int,
+                gpus_per_node: int,
                 mem_per_node: int,
-                nodes: int, 
+                nodes: int,
                 walltime: int,
                 qos: str|None = None) -> None:
         """Defines the default data for a HPC SLURM partition.
@@ -55,23 +57,24 @@ class HPC:
     """Defines a HPC cluster. This class contains all important information to how it is setup. 
 
     Attributes:
-        partitions (dict[str,partitionClass]): Dictionary of all partitions
+        partitions (dict[str,PartitionClass]): Dictionary of all partitions
         login_node (str): Hostname of the HPC
         name (str): Name of the HPC
         username (str): Username to connect to the HPC
     """
-    partitions: dict[str,partitionClass] = dict()
+    partitions: dict[str,PartitionClass] = dict()
     login_node: str
     name: str
     username: str
 
     def __init__(self, name: str, login_node: str, username: str = os.getlogin()) -> None:
-        """Initialises the HPC class. This allows allocation of name and how to connect
+        """Initializes the HPC class. This allows allocation of name and how to connect
 
         Args:
             name (str): Name of the HPC
             login_node (str): Hostname of the HPC. (How to connect)
-            username (str, optional): username to connect to the HPC. Defaults to the current username.
+            username (str, optional): username to connect to the HPC. 
+            Defaults to the current username.
         """
         self.name = name
         self.login_node = login_node
@@ -82,7 +85,7 @@ class HPC:
         return f"HPC: {self.name}"
 
 
-    def add_partition(self, partition: partitionClass) -> None:
+    def add_partition(self, partition: PartitionClass) -> None:
         """Adds partitions to the HPC.
 
         Args:
@@ -92,20 +95,21 @@ class HPC:
 
 
 ADA = HPC(name="ada", login_node="hpclogin02.ada.nottingham.ac.uk")
-ADA.add_partition(partitionClass("q4bioq", 96, 8, 1900, 1, 672, "q4bio" ))
-ADA.add_partition(partitionClass("defq", 96, 0, 361, 63, 168))
-ADA.add_partition(partitionClass("ampereq", 96, 8, 747, 3, 168))
-ADA.add_partition(partitionClass("ampere-mq", 96, 56, 747, 1, 168))
-ADA.add_partition(partitionClass("compchemq", 56, 4, 384, 5, 168, "compchem"))
+ADA.add_partition(PartitionClass("q4bioq", 96, 8, 1900, 1, 672, "q4bio" ))
+ADA.add_partition(PartitionClass("defq", 96, 0, 361, 63, 168))
+ADA.add_partition(PartitionClass("ampereq", 96, 8, 747, 3, 168))
+ADA.add_partition(PartitionClass("ampere-mq", 96, 56, 747, 1, 168))
+ADA.add_partition(PartitionClass("compchemq", 56, 4, 384, 5, 168, "compchem"))
 
 
 
-class slurm:
-    """Contains information for a slurm job. This allows for checking that the configuration is allowed. 
+class Slurm:
+    """Contains information for a slurm job. This allows for checking that the 
+    configuration is allowed. 
 
     Attributes:
         hpc (HPC): HPC to use
-        partition (partitionClass): Partition to use
+        partition (PartitionClass): Partition to use
         time (int): Job Wall time in hours
         name (str): Name of the job
         nodes (int): Number of nodes to use
@@ -118,7 +122,7 @@ class slurm:
         tasks_pn (int): slurm NTASKS_PER_NODE variable
     """
     hpc: HPC = ADA
-    partition: partitionClass  = ADA.partitions["defq"]
+    partition: PartitionClass  = ADA.partitions["defq"]
     time = 24
     name = "pyMD"
     nodes = 1
@@ -131,12 +135,13 @@ class slurm:
     tasks_pn: int
 
     def __init__(self,partition:str = "defq"):
-        """Initialises the job, by first selecting the partition
+        """Initializes the job, by first selecting the partition
         
         Args:
             partition (str, optional): Partition to use. Defaults to defq.
         """
-        assert partition in self.hpc.partitions.keys(), f"Partition {partition} not recognised for HPC {self.hpc.name}."
+        assert partition in self.hpc.partitions.keys(), \
+            f"Partition {partition} not recognized for HPC {self.hpc.name}."
         self.partition = HPC.partitions[partition]
 
 
@@ -149,7 +154,8 @@ class slurm:
         Args:
             time (int): Maximum time for the slurm job.
         """
-        assert time <= self.partition.walltime, f"Time {time} exceeds max walltime for partition {self.partition} on HPC {self.hpc}."
+        assert time <= self.partition.walltime, \
+            f"Time {time} exceeds max walltime for partition {self.partition} on HPC {self.hpc}."
         self.time = time
 
 
@@ -168,7 +174,8 @@ class slurm:
         Args:
             nodes (int): Number of nodes to use
         """
-        assert nodes <= self.partition.nodes, f"Nodes {nodes} exceeds max nodes for partition {self.partition} on HPC {self.hpc}."
+        assert nodes <= self.partition.nodes, \
+            f"Nodes {nodes} exceeds max nodes for partition {self.partition} on HPC {self.hpc}."
         self.nodes = nodes
 
 
@@ -178,7 +185,8 @@ class slurm:
         Args:
             mem (int): Memory to allocate for the job.
         """
-        assert mem <= self.partition.mem_per_node, f"Memory {mem} exceeds max memory for partition {self.partition} on HPC {self.hpc}."
+        assert mem <= self.partition.mem_per_node, \
+            f"Memory {mem} exceeds max memory for partition {self.partition} on HPC {self.hpc}."
         self.mem = mem
 
 
@@ -188,7 +196,8 @@ class slurm:
         Args:
             gpus (int): Number of GPU's for the job.
         """
-        assert gpus <= self.partition.gpus_per_node, f"GPUs {gpus} exceeds max GPUs for partition {self.partition} on HPC {self.hpc}."
+        assert gpus <= self.partition.gpus_per_node, \
+        	f"GPUs {gpus} exceeds max GPUs for partition {self.partition} on HPC {self.hpc}."
         self.gpus = gpus
 
 
@@ -196,7 +205,8 @@ class slurm:
         """Allocates the modules that are required for the job
 
         Args:
-            modules (list[str]): List of modules to be loaded for the job. #TODO Add a way to define modules that are available on the HPC.
+            modules (list[str]): List of modules to be loaded for the job. #TODO Add a way to 
+            	define modules that are available on the HPC.
         """
         self.modules = modules
 
@@ -206,7 +216,8 @@ class slurm:
 
         Args:
             tasks (int): Number of tasks for the job.
-            per_node (bool, optional): Whether to set the SLURM_NTASKS_PER_NODE for the job. Defaults to True. #TODO implement False
+            per_node (bool, optional): Whether to set the SLURM_NTASKS_PER_NODE for the job. 
+            	Defaults to True. #TODO implement False
         """
         if per_node:
             self.tasks_pn = tasks
@@ -220,14 +231,15 @@ class slurm:
         
         Args:
             array_file (str): Path to file where each line is a job.
-            length (int|None): The length of the array job. If None, the length is determined from the array file. 
+            length (int|None): The length of the array job. If None, the length is 
+            	determined from the array file. 
             check (bool): Whether to check if the array file exists. Defaults to True.
             """
         if check:
             assert os.path.isfile(array_file), f"Array file {array_file} not found."
         self.array = True
         if length is None:
-            with open(array_file, "r") as f:
+            with open(array_file, "r", encoding="UTF-8") as f:
                 lines = f.readlines()
             self.array_len = len(lines)
         else:
@@ -255,22 +267,22 @@ class slurm:
             file += f"\n#SBATCH --qos={self.partition.qos}"
         if self.gpus > 0:
             file += f"\n#SBATCH --gres=gpu:{self.gpus}"
-        if self.array == True:
+        if self.array is True:
             file += f"\n#SBATCH --array=1-{self.array_len}"
         file += "\n\n"
-        
+
         if self.modules:
             for module in self.modules:
                 file += f"module load {module}\n"
-       
+
         file += "\n"
-        if self.array == True:
+        if self.array is True:
             file += f"ARRAY_FILE=\"{self.array_file}\"\n"
-            file += f"CMD=$(cat $ARRAY_FILE | head -n $(($SLURM_ARRAY_TASK_ID*1)) | tail -n 1)\n"
-            file += f"echo \"Running job: $SLURM_ARRAY_TASK_ID\"\n"
-            file += f"echo \"Command: $CMD\"\n"
-            file += f"eval $CMD \n"
-        
+            file += "CMD=$(cat $ARRAY_FILE | head -n $(($SLURM_ARRAY_TASK_ID*1)) | tail -n 1)\n"
+            file += "echo \"Running job: $SLURM_ARRAY_TASK_ID\"\n"
+            file += "echo \"Command: $CMD\"\n"
+            file += "eval $CMD \n"
+
         file += f"\n\n{command}\n"
 
         return file

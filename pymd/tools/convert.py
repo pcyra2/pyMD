@@ -1,6 +1,8 @@
+"""#TODO
+"""
 
-class timeClass:
-    """time class. Used for quick convertion of time units
+class TimeClass:
+    """Time class. Used for quick convertion of time units
     
     Attributes:
         name (str): name of the unit
@@ -22,33 +24,36 @@ class timeClass:
         self.short_hand = short_hand
         self.relative_value = relative_value
 
-TIME_UNITS = [timeClass("seconds", "s", 1.0), 
-        timeClass("minutes", "min", 60.0),
-        timeClass("hours", "hr", 3600.0),
-        timeClass("days", "d", 86400.0),
-        timeClass("nanoseconds", "ns", 1e-9),
-        timeClass("picoseconds", "ps", 1e-12),
-        timeClass("femtoseconds", "fs", 1e-15)]
+TIME_UNITS = [TimeClass("seconds", "s", 1.0),
+        TimeClass("minutes", "min", 60.0),
+        TimeClass("hours", "hr", 3600.0),
+        TimeClass("days", "d", 86400.0),
+        TimeClass("nanoseconds", "ns", 1e-9),
+        TimeClass("picoseconds", "ps", 1e-12),
+        TimeClass("femtoseconds", "fs", 1e-15)]
 
-def get_time(unit:str)->timeClass:
+def get_time(unit:str)->TimeClass:
     """Used as a helper function to find the timeClass object.
     
     Args:
         unit (str): Unit, either the full name, or the short-hand notation.
 
     Returns:
-        timeClass: the timeClass object.
+        TimeClass: the TimeClass object.
     """
     unit = unit.casefold()
     tmp = None
     for times in TIME_UNITS:
         if unit == times.name or unit == times.short_hand:
             tmp = times
-    assert isinstance(tmp, timeClass), f"Units {unit} not recognised"
+    assert isinstance(tmp, TimeClass), f"Units {unit} not recognised"
     return tmp
 
 
-def time(in_time: float = 1, in_unit: str = "s", out_unit: str = "s")->float:
+def time(
+        in_time: float = 1,
+        in_unit: str = "s",
+        out_unit: str = "s")->float:
     """Converts units of time
 
     Args:
@@ -62,11 +67,15 @@ def time(in_time: float = 1, in_unit: str = "s", out_unit: str = "s")->float:
 
     in_unit_time = get_time(in_unit)
     out_unit_time =  get_time(out_unit)
-    
-    return (in_time * in_unit_time.relative_value)/out_unit_time.relative_value
-            
 
-def steps_to_time(steps: int,  time_units: str = "s", timestep: float = 0.002, timestep_units: str = "ps")->float:
+    return (in_time * in_unit_time.relative_value)/out_unit_time.relative_value
+
+
+def steps_to_time(
+        steps: int,
+        time_units: str = "s",
+        timestep: float = 0.002,
+        timestep_units: str = "ps")->float:
     """Converts steps to real time
 
     Args:
@@ -80,11 +89,15 @@ def steps_to_time(steps: int,  time_units: str = "s", timestep: float = 0.002, t
         float: total time
     """
     _time_units = get_time(time_units)
-    
+
     return (steps*time(timestep, timestep_units))/_time_units.relative_value
 
 
-def time_to_steps(sim_time: float, time_units: str = "ps", timestep: float = time(2,"fs"),  timestep_units: str = "ps")->int:
+def time_to_steps(
+        sim_time: float,
+        time_units: str = "ps",
+        timestep: float = time(2,"fs"),
+        timestep_units: str = "ps")->int:
     """
 
     Args:
@@ -94,12 +107,10 @@ def time_to_steps(sim_time: float, time_units: str = "ps", timestep: float = tim
         timestep_units (str, optional): units for time step. Defaults to "ps".
 
     Returns:
-        int: number of steps required to obtain a simulation of length sim_time with the provided timestep
+        int: number of steps required to obtain a simulation of length 
+            sim_time with the provided timestep
     """
     # timestep = time(timestep, timestep_units, "ps")
     sim_time_dt_units = time(sim_time, time_units, timestep_units)
 
     return int(sim_time_dt_units / timestep)
-
-
-

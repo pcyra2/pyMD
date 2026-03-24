@@ -1,4 +1,4 @@
-from pyMD.MD.kernels.AMBER import Amber
+from pymd.MD.kernels.amber import Amber
 
 import os
 import subprocess

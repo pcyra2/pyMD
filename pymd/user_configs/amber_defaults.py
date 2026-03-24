@@ -1,8 +1,11 @@
 import os
-import pyMD.tools.convert as convert
+import pymd.tools.convert as convert
 
 
 class AmberConfig:
+    """
+    _summary_
+    """
     GPUPath: str = "" # Path to the GPU binary of AMBER
     CPUPath: str = "/home/ross/Software/miniconda/envs/pyMD/bin/sander" # Path to the CPU binary of AMBER
 
@@ -10,7 +13,7 @@ class AmberConfig:
     ntpr: int = 100 # Frequency to write mdout energy
     ntwx: int = 100 # Frequency to write to mdcrd trajectory file
     ntwr: int = 100 # Frequency to update the restart file
-    ioutfm: int = 1 # Writes netCDF trajectories as binary 
+    ioutfm: int = 1 # Writes netCDF trajectories as binary
     iwrap: int = 1 # Wraps the trajectories into the "primary box"
 
     ## Minimisation options
@@ -20,7 +23,7 @@ class AmberConfig:
     ntmin: int = 1 # Type of minimisation to perform
 
     ## Simulation options
-    
+
     irest: int = 0 # Whether to restart the simulation, 0 = new simulation, 1 = continue simulation
     cut: float = 8 # Non-bonded cutoff distance (Angstrom)
     ntx: int = 1 # Whether to read coordinates and velocities from the restart file, 1 = no, 5 = yes
@@ -72,7 +75,7 @@ class AmberConfig:
         if os.path.isfile(self.GPUPath) is False:
             print("WARNING: AMBER GPU path not found, please fix this to use amber CPU")
             print(self.GPUPath)
-        
+
     def set_timestep(self, timestep: float):
         """
 
