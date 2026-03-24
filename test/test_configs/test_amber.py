@@ -1,34 +1,34 @@
-from pymd.UserConfigs.AmberDefaults import AmberConfig
-from pymd.MD.kernels.amber import Amber
-
 import os
-import pytest 
+import pytest
+
+from pymd.user_configs.amber_defaults import AmberConfig
+from pymd.md.kernels.amber import Amber
 
 # @pytest.mark.skip(reason="Currently dont have an environment with amber")
 def test_paths():
     config = AmberConfig()
-    
+
     assert os.path.isfile(str(config.CPUPath)), "CPU version of amber is not found"
 
 def test_minimisation_toggle():
     config = AmberConfig()
-    assert config._minimisation == False
+    assert config._minimisation is False
     config.set_minimisation(100)
-    assert config._minimisation == True
+    assert config._minimisation is True
     assert config.ncyc == 50
     assert config.maxcyc == 100
 
     config.set_minimisation(200, 150)
-    assert config._minimisation == True
+    assert config._minimisation is True
     assert config.maxcyc == 200
     assert config.ncyc == 150
 
 
 def test_dynamics_toggle():
     config = AmberConfig()
-    assert config._minimisation == False
+    assert config._minimisation is False
     config.set_minimisation(100)
-    assert config._minimisation == True
+    assert config._minimisation is True
     config.set_dynamics(timestep=0.002, shake=3)
     assert config.dt == 0.002
     assert config.nct == 3

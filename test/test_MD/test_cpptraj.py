@@ -1,4 +1,4 @@
-import pymd.MD.utilities.cpptraj as cpptraj
+import pymd.md.utilities.cpptraj as cpptraj
 
 import pymd.tools.io as io
 

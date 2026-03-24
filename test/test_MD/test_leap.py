@@ -1,5 +1,5 @@
 import pymd.tools.io as io
-import pymd.MD.utilities.parameterise as parameterise
+import pymd.md.utilities.parameterise as parameterise
 
 import subprocess
 

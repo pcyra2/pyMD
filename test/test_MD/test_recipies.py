@@ -1,6 +1,6 @@
-import pymd.MD.recipies.standard_md as standard_md
+import pymd.md.recipies.standard_md as standard_md
 import pymd.tools.io as io
-from pymd.MD.md import MDClass
+from pymd.md.md import MDClass
 
 from pprint import pprint
 import pytest

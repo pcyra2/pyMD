@@ -1,4 +1,4 @@
-import pymd.MD.utilities.mutate as mutate 
+import pymd.md.utilities.mutate as mutate 
 import pymd.tools.io as io
 
 import os
