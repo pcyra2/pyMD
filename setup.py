@@ -6,6 +6,7 @@ setup(
     py_modules=['pymd'],
     entry_points={
         'console_scripts': [
+            "TI = pymd.experiments.thermodynamic_integration:main"
         ],
     },
     install_requires=["pyscf", "rdkit", "spyrmsd", "matplotlib",

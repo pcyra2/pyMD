@@ -2,6 +2,7 @@ from pymd.md.kernels.universal import MDJobClass
 from pymd.md.kernels.amber import Amber
 from pymd.user_configs.amber_defaults import AmberConfig
 from pymd.tools import convert
+import pymd.md.utilities.leap as PyLeap
 
 class MDClass:
     """Class for handling the MD simulations. It contains job classes which can be used to handle 
@@ -188,6 +189,7 @@ class MDClass:
                     run_path=path)
         self.current_job.to_gpu()
         self.jobs.append(self.current_job)
+
 
     def constant(self,
             input_structure: str,

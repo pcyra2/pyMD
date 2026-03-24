@@ -1,0 +1,79 @@
+"""
+This script should automatically run thermodynamic integration.
+"""
+from  dataclasses import dataclass
+import os
+
+from pymd.md.recipies import thermodynamic_integration as TI
+from pymd.md.recipies import standard_md
+from pymd.tools import io
+from pymd.md.md import MDClass
+
+@dataclass
+class ConfigClass:
+    """
+    #TODO
+    """
+    input_file: str = "Job.conf"
+    run_dir: str = "./"
+    base_protein: str = ""
+    base_ligand: str = ""
+    change_type: str = "protein"
+    mutation: str = ""
+    pre_parameterised: bool = True
+    pre_equilibrated: bool = False
+    parm_file: str|None = None
+    topology_file: str|None = None
+    cpus: int = 12
+    gpus: int = 1
+    
+
+    def __init__(self):
+        pass
+
+    def to_dict(self)->dict:
+        """Returns a dictionary of the class attributes"""
+        return {key:value for key, value in vars(self).items() if not key.startswith('_')}
+
+    def from_dict(self, d: dict):
+        """
+        Initialises config from dictionary.
+
+        Args:
+            d (dict): dictionary containing input variables. 
+        """
+        for key, value in d.items():
+            if key in vars(self).keys():
+                setattr(self, key, value)
+        assert self.change_type in TI.TI_TYPES, \
+            f"TI mutation {self.change_type} is not known. Only accepts: {TI.TI_TYPES}"
+        if self.pre_equilibrated is True:
+            self.pre_parameterised = True
+        if self.pre_parameterised is True:
+            assert self.parm_file is not None, "ERR: Equilibrated parameter file is required."
+            assert self.topology_file is not None, "ERR: Equilibrated topology file is required."
+
+
+def main():
+    """
+    Runs TI.
+    """
+    config = ConfigClass()
+    if os.path.isfile(config.input_file):
+        c_data = io.json_read(config.input_file)
+        config.from_dict(c_data)
+
+    if config.pre_parameterised is False:
+        raise NotImplementedError
+
+    md = MDClass(backend="AMBER")
+    md.set_parmfile(config.parm_file) # pyright: ignore[reportArgumentType]
+    md.define_hardware(cpu = config.cpus, gpu = config.gpus)
+
+    if config.pre_equilibrated is False:
+        md = standard_md.initialise_system(md, path="./setup")
+        for job in md.jobs:
+            job.exe()
+
+if __name__ == "__main__":
+    main()

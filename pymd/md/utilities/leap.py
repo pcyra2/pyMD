@@ -19,8 +19,8 @@ KNOWN_FORCEFIELDS = dict(ff14SB = dict(phosaa = "phosaa14SB",
 
 def gen_leap(lig_code:str,
             pdb_file:str,
-            parm_file: str,
-            amber_coor: str = "start.rst7",
+            parm_file: str = "complex.parm7",
+            amber_coor: str = "complex.rst7",
             forcefield: str = "ff14SB",
             box: float = 12.0
             ):

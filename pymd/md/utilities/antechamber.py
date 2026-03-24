@@ -10,7 +10,7 @@ import pymd.tools.io as io
 from pymd.tools.structure import Molecule
 
 
-def gen_gaussian(mol: Molecule, proc: int=12, mem: int=10):
+def gen_gaussian_for_antechamber(mol: Molecule, proc: int=12, mem: int=10):
     """#TODO"""
 
     assert isinstance(mol.charge, int)
