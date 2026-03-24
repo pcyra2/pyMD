@@ -13,3 +13,4 @@ conda install ambertools
 Try to use PEP8 where possible. (I am relatively new, so it won't be perfect)
 New functions should be snake_case.
 New classes should be CamelCase
+class attributes should be snake_case

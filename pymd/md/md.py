@@ -23,8 +23,8 @@ class MDClass:
     kernel: Amber
     jobs: list[MDJobClass]
     current_job: MDJobClass
-    num_CPU: int = 1
-    num_GPU: int = 0
+    num_cpu: int = 1
+    num_gpu: int = 0
 
 
     def __init__(
@@ -67,8 +67,8 @@ class MDClass:
             gpu (int): The number of GPUs to give to the MD package.
                         Defaults to 0.
         """
-        self.num_CPU=cpu
-        self.num_GPU=gpu
+        self.num_cpu=cpu
+        self.num_gpu=gpu
 
 
     def make_job(self,
@@ -85,7 +85,7 @@ class MDClass:
             output_file_name (str): The name of the outputfile, excluding the file extention.
             run_path (str): Where to run the calculation.
         """
-        self.kernel.config.set_calculation_variables(self.kernel.parmfile,
+        self.kernel.config.set_calculation_variables(self.kernel.parm_file,
                                                     input_coordinates=input_structure,
                                                     input_file_name=input_file_name,
                                                     output_file_name=output_file_name)
@@ -137,14 +137,14 @@ class MDClass:
         self.jobs.append(self.current_job)
 
 
-    def heat(self, 
-            input_structure: str, 
-            job_name: str, 
-            steps: int, 
-            start_temperature: float = 0, 
-            end_temperature: float = 300, 
-            restraints: str|None = None, 
-            timestep: float = convert.time(2, in_unit="fs", out_unit="ps"), 
+    def heat(self,
+            input_structure: str,
+            job_name: str,
+            steps: int,
+            start_temperature: float = 0,
+            end_temperature: float = 300,
+            restraints: str|None = None,
+            timestep: float = convert.time(2, in_unit="fs", out_unit="ps"),
             thermostat: str|int|None = None,
             traj_out: int = 100,
             energy_out: int = 10,
@@ -189,13 +189,13 @@ class MDClass:
         self.current_job.to_gpu()
         self.jobs.append(self.current_job)
 
-    def constant(self, 
+    def constant(self,
             input_structure: str,
             job_name: str,
             steps: int,
             temperature: float = 300.0,
             thermostat: str|int|None = None,
-            pressure: float|None = None, 
+            pressure: float|None = None,
             barostat: str|int|None = None,
             restraints: str|None = None,
             timestep: float = convert.time(2, in_unit="fs", out_unit="ps"),
@@ -204,6 +204,25 @@ class MDClass:
             energy_out: int = 10,
             restart_out: int = 10,
             ):
+        """
+        #TODO
+
+        Args:
+            input_structure (str): _description_
+            job_name (str): _description_
+            steps (int): _description_
+            temperature (float, optional): _description_. Defaults to 300.0.
+            thermostat (str | int | None, optional): _description_. Defaults to None.
+            pressure (float | None, optional): _description_. Defaults to None.
+            barostat (str | int | None, optional): _description_. Defaults to None.
+            restraints (str | None, optional): _description_. Defaults to None.
+            timestep (float, optional): _description_. 
+                Defaults to convert.time(2, in_unit="fs", out_unit="ps").
+            path (str, optional): _description_. Defaults to "./".
+            traj_out (int, optional): _description_. Defaults to 100.
+            energy_out (int, optional): _description_. Defaults to 10.
+            restart_out (int, optional): _description_. Defaults to 10.
+        """
         if pressure is not None:
             ensemble = "npt"
             if barostat is None:

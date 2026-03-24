@@ -11,5 +11,5 @@ setup(
     install_requires=["pyscf", "rdkit", "spyrmsd", "matplotlib",
                       "plotly", "pyscf-dispersion", "h5py",
                       "pytest", "pytest-cov", "pytest-html",
-                      "pytest-subprocess"]
+                      "pytest-subprocess", "numpy"]
 )

@@ -1,7 +1,7 @@
 import os
 
 import pymd.tools.convert as convert
-from pymd.MD.md import MDClass
+from pymd.md.md import MDClass
 
 def initialise_system(mm: MDClass,
         min_steps: int=10000,

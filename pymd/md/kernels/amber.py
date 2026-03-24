@@ -5,7 +5,7 @@ import subprocess
 import os
 import copy
 
-from pymd.UserConfigs.AmberDefaults import AmberConfig
+from pymd.user_configs.amber_defaults import AmberConfig
 
 
 class Amber:
@@ -14,7 +14,7 @@ class Amber:
     """
     defaults: AmberConfig
     config: AmberConfig
-    parmfile: str
+    parm_file: str
     cores: int
 
     def __init__(
@@ -41,9 +41,13 @@ class Amber:
         if output_file_name is None:
             output_file_name = input_file_name
         if gpu:
-            return f"pmemd.cuda -O -i {input_file_name}.in -c {input_structure_name} -r {self.parmfile} -o {output_file_name}.out -r {output_file_name}.rst7 -x {output_file_name}.nc"
+            return f"pmemd.cuda -O -i {input_file_name}.in -c {input_structure_name} -r " \
+                + f"{self.parm_file} -o {output_file_name}.out -r {output_file_name}.rst7" \
+                +f" -x {output_file_name}.nc"
         else:
-            return f"sander -O -i {input_file_name}.in -c {input_structure_name} -r {self.parmfile} -o {output_file_name}.out -r {output_file_name}.rst7 -x {output_file_name}.nc"
+            return f"sander -O -i {input_file_name}.in -c {input_structure_name} -r " \
+                + f"{self.parm_file} -o {output_file_name}.out -r {output_file_name}.rst7" \
+                + f" -x {output_file_name}.nc"
 
     def exec(
             self,
@@ -66,16 +70,20 @@ class Amber:
         """
         inputfile = self.config.gen_input_file(input_file_name)
         if os.path.isfile(os.path.join(path, input_file_name)) is False:
-            with open(os.path.join(path, input_file_name), "w") as f:
+            with open(os.path.join(path, input_file_name), "w", encoding="UTF-8") as f:
                 f.writelines(inputfile)
 
-        assert os.path.isfile(os.path.join(path, input_structure_name)), f"Input structure file is not found: {input_structure_name}"
+        assert os.path.isfile(os.path.join(path, input_structure_name)), \
+            f"Input structure file is not found: {input_structure_name}"
 
-        command = self._gen_runlines(input_file_name=input_file_name, input_structure_name=input_structure_name, output_file_name=output_file_name, gpu=gpu)
-            
+        command = self._gen_runlines(input_file_name=input_file_name,
+                            input_structure_name=input_structure_name,
+                            output_file_name=output_file_name,
+                            gpu=gpu)
+
         print(f"INFO: Running command: {command}")
-        with open(f"{output_file_name}.out", "w") as f:
-            outlines = subprocess.run([command],stdout=f, cwd=path)
+        with open(f"{output_file_name}.out", "w", encoding="UTF-8") as f:
+            outlines = subprocess.run([command],stdout=f, cwd=path, check=True)
         return outlines
 
     def set_global(
@@ -87,7 +95,7 @@ class Amber:
         Args:
             param (str): .parm7 file
         """
-        self.parmfile = parmfile
+        self.parm_file = parmfile
 
 
     def set_outputs(
@@ -135,7 +143,8 @@ class Amber:
         ensemble = ensemble.casefold()
         known_ensembles = ["min", "heat", "nvt", "npt"]
         if ensemble not in known_ensembles:
-            raise ValueError(f"Ensemble {ensemble} not recognised, known ensembles are: {known_ensembles}")
+            raise ValueError(f"Ensemble {ensemble} not recognised," \
+                             + f" known ensembles are: {known_ensembles}")
         if ensemble == "min":
             # assert "steps" in kwargs, "Must provide number of steps for minimisation ensemble"
             # steps = kwargs["steps"]
@@ -164,7 +173,7 @@ class Amber:
                 heating_steps = kwargs["heating_steps"]
             else:
                 heating_steps = int(0.9*steps) ## By default, heat for 90% of the simulation, \
-                                                # then run at constant temperature for the remaining 10%
+                                            # then run at constant temperature for the remaining 10%
 
             ## Obtain the heating parameters, if not provided use defaults
             if "start_temp" in kwargs:
@@ -175,16 +184,16 @@ class Amber:
                 end_temp = kwargs["end_temp"]
             else:
                 end_temp = self.defaults.temp0
-            
+
             self.config.set_heating(start_temp=start_temp, end_temp=end_temp, nsteps=heating_steps)
 
             if "timestep" in kwargs:
                 dt = kwargs["timestep"]
             elif "time_step" in kwargs:
                 dt = kwargs["time_step"]
-            else:                
+            else:
                 dt = self.defaults.dt
-            
+
             if "shake" in kwargs:
                 shake = kwargs["shake"]
             else:
@@ -212,7 +221,7 @@ class Amber:
             else:
                 temp = self.defaults.temp0
 
-            
+
             self.config.set_temperature(temp)
             self.config.set_pressure_scaling(0) # No pressure scaling for NVT ensemble
 
@@ -220,9 +229,9 @@ class Amber:
                 dt = kwargs["timestep"]
             elif "time_step" in kwargs:
                 dt = kwargs["time_step"]
-            else:                
+            else:
                 dt = self.defaults.dt
-            
+
             if "shake" in kwargs:
                 shake = kwargs["shake"]
             else:
@@ -267,9 +276,9 @@ class Amber:
                 dt = kwargs["timestep"]
             elif "time_step" in kwargs:
                 dt = kwargs["time_step"]
-            else:                
+            else:
                 dt = self.defaults.dt
-            
+
             if "shake" in kwargs:
                 shake = kwargs["shake"]
             else:
