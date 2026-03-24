@@ -15,7 +15,15 @@ class Amber:
         self.defaults = copy.deepcopy(config)
         self.config = copy.deepcopy(config)
     
-    def _gen_runlines(self, input_file_name: str,  input_structure_name: str,output_file_name: str|None = None, gpu: bool = False):
+    def _gen_runlines(self, input_file_name: str,  input_structure_name: str, output_file_name: str|None = None, gpu: bool = False):
+        """Generates the command that runs the AMBER calculation
+
+        Args:
+            input_file_name (str): input file name without the extension.
+            input_structure_name (str): Name of coordinate file that the simulation is starting from.
+            output_file_name (str): Name of output file. Defaults to None, in which case it is the same as input_file_name. Defaults to None.
+            gpu (bool): Whether to use the gpu or not. Defaults to False (sander).
+        """
         if output_file_name is None:
             output_file_name = input_file_name
         if gpu:
@@ -59,6 +67,7 @@ class Amber:
         """
         self.parmfile = parmfile
 
+
     def set_outputs(self, energy: int, restart: int,  trajectory: int):
         """Sets the output frequencies for the calculation. 
 
@@ -69,6 +78,7 @@ class Amber:
         """
         self.config.set_outputs(restart=restart, energy=energy, trajectory=trajectory)
 
+
     def set_cores(self, cores: int):
         """Sets the number of cores to use for the MD simulation
 
@@ -77,6 +87,7 @@ class Amber:
         """
         assert cores > 0, "Cannot have a negative number of CPU's"
         self.cores = cores
+
 
     def set_restraints(self, restraint_mask: str|None, restraint_wt: float = 5.0):
         """
@@ -87,6 +98,7 @@ class Amber:
             restraint_wt (float, optional): Harmonic restraint weight. Defaults to 5.0.
         """
         self.config.set_restraints(restraint_mask=restraint_mask, restraint_wt=restraint_wt)
+
 
     def set_ensemble(self, ensemble:str, steps: int,  **kwargs):
         """
@@ -243,5 +255,7 @@ class Amber:
             self.config.set_dynamics(timestep=dt, shake=shake)
             self.config.set_ensemble("npt")
 
+
     def _reset_config(self):
+        """Reset the configuration to defaults."""
         self.config = copy.deepcopy(self.defaults)

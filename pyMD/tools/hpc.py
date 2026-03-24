@@ -262,7 +262,7 @@ class slurm:
         if self.modules:
             for module in self.modules:
                 file += f"module load {module}\n"
-        
+       
         file += "\n"
         if self.array == True:
             file += f"ARRAY_FILE=\"{self.array_file}\"\n"

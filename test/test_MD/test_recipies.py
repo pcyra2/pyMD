@@ -18,7 +18,7 @@ def test_initialisation(fp):
     fp.register(command=commands, stdout="This command was run", )
     MM = MDClass("AMBER")
     MM.set_parmfile("complex.parm7")
-    MM.define_Hardware(CPU=12)
+    MM.define_hardware(cpu=12)
 
     MM = standard_MD.initialise_system(MM, path=temp_dir)
 

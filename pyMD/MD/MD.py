@@ -1,55 +1,116 @@
 from pyMD.MD.kernels.universal import MDJobClass
 from pyMD.MD.kernels.AMBER import Amber
 from pyMD.UserConfigs.AmberDefaults import AmberConfig
-import pyMD.tools.convert as convert
+from pyMD.tools import convert
 
 class MDClass:
+    """Class for handling the MD simulations. It contains job classes which can be used to handle 
+    the input/output data. It also contains the MD package backend and other system configurations.
+
+    Attributes:
+        base_config (AmberConfig): The default configuration for the MD package.
+        _backend (str): The backend for the MD package.
+        kernel (Amber): The MD package backend. #TODO This will be expanded as other 
+                        backends are introduced.
+        jobs (list[MDJobClass]): List of MDJobClass classes that contain the job information.
+        current_job (MDJobClass): The MDJobClass that is currently being run/generated.
+        num_CPU (int): The number of CPU cores to run calculations on. Defaults to 1.
+        num_GPU (int): The number of GPU's available to the MD calculation. Defaults to 0.
+
+    """
     base_config: AmberConfig
     _backend: str
     kernel: Amber
     jobs: list[MDJobClass]
-    current_job: MDJobClass   
+    current_job: MDJobClass
     num_CPU: int = 1
     num_GPU: int = 0
 
 
-    def __init__(self, backend: str = "", config: AmberConfig = AmberConfig()):
+    def __init__(
+            self,
+            backend: str = "",
+            config: AmberConfig = AmberConfig()
+            ):
         self._backend = backend.casefold()
         self.base_config = config
 
         if self._backend == "amber":
             self.kernel = Amber(config)
         else:
-            raise NotImplementedError(f"ERROR: Backend {self._backend} not implemented yet, only AMBER is currently supported")
+            raise NotImplementedError(f"ERROR: Backend {self._backend} not implemented yet,"+ \
+                                      " only AMBER is currently supported")
         self.jobs = []
 
 
-    def set_parmfile(self, parmfile:str):
+    def set_parmfile(
+            self,
+            parmfile: str
+            ):
+        """Sets the paramfile for the MD calculation.
+        
+        Args:
+            parmfile (str): The name of the parmfile.
+        """
         self.kernel.set_global(parmfile)
 
 
-    def define_Hardware(self, CPU: int=1, GPU:int = 0 ):
-        self.num_CPU=CPU
-        self.num_GPU=GPU
+    def define_hardware(
+            self,
+            cpu: int=1,
+            gpu:int = 0 ):
+        """Sets the CPU and GPU configuration for the calculation. 
+
+        Args:
+            cpu (int): The number of CPUs to give to the MD package.
+                        Defaults to 0.
+            gpu (int): The number of GPUs to give to the MD package.
+                        Defaults to 0.
+        """
+        self.num_CPU=cpu
+        self.num_GPU=gpu
 
 
-    def make_job(self, input_file_name: str, input_structure: str, output_file_name: str, run_path: str ):
+    def make_job(self,
+                input_file_name: str,
+                input_structure: str,
+                output_file_name: str,
+                run_path: str ):
+        """A workflow to build the MDJobClass correctly. 
+
+        Args:
+            input_file_name (str): The name of the inputfile, excluding the file extention.
+            input_structure (str): The name of the input coordinate/topology file. This should
+            include the file extention.
+            output_file_name (str): The name of the outputfile, excluding the file extention.
+            run_path (str): Where to run the calculation.
+        """
         self.kernel.config.set_calculation_variables(self.kernel.parmfile,
                                                     input_coordinates=input_structure,
                                                     input_file_name=input_file_name,
                                                     output_file_name=output_file_name)
 
-        self.current_job = MDJobClass(inputfile_name=input_file_name, 
+        self.current_job = MDJobClass(inputfile_name=input_file_name,
                                         input_structure=input_structure,
-                                        outputfile_name=output_file_name, 
+                                        outputfile_name=output_file_name,
                                         run_path=run_path)
         file = self.kernel.config.gen_input_file(input_file_name)
         self.current_job.add_inputfile(file)
         self.current_job.add_kernel(self.kernel)
 
 
-    def minimize(self, input_structure: str, job_name: str, steps: int, restraints: str|None = None, run_path: str = "./", steps_steepest: int|None = None, traj_out: int = 10, restart_out: int = 10, energy_out: int = 10):
-        """Sets up a minimisation job with the given parameters and adds it to the list of jobs to be executed.
+    def minimize(self,
+                input_structure: str,
+                job_name: str,
+                steps: int,
+                restraints: str|None = None,
+                run_path: str = "./",
+                steps_steepest: int|None = None,
+                traj_out: int = 10,
+                restart_out: int = 10,
+                energy_out: int = 10):
+        """Sets up a minimisation job with the given parameters and adds it to the list of 
+        jobs to be executed.
 
         Args:
             input_structure (str): Name of the input structure file (e.g. .rst7 for AMBER).
@@ -57,7 +118,8 @@ class MDClass:
             steps (int): Number of steps to run the minimisation for.
             restraints (str, optional): Selection algebra for restraints. Defaults to "".
             run_path (str, optional): Path where the job will be executed. Defaults to "./".
-            steps_steepest (int, optional): Number of steepest descent minimization steps. Defaults to 0.
+            steps_steepest (int, optional): Number of steepest descent minimization steps. 
+                                            Defaults to 0.
             traj_out (int, optional): Frequency of trajectory output. Defaults to 10.
             restart_out (int, optional): Frequency of restart output. Defaults to 10.
             energy_out (int, optional): Frequency of energy output. Defaults to 10.
@@ -96,18 +158,21 @@ class MDClass:
             steps (int): Number of steps
             start_temperature (float, optional): Initial temperature. Defaults to 0.
             end_temperature (float, optional): End temperature. Defaults to 300.
-            restraints (str | None, optional): Any restraints to apply to the system. Defaults to None.
-            timestep (float, optional): timestep for dynamics in picoseconds. Defaults to 0.002 ps (2 fs).
-            thermostat (str | None, optional): Desired thermostat. Defaults to the kernel's default thermostat.
+            restraints (str | None, optional): Any restraints to apply to the system. 
+            Defaults to None.
+            timestep (float, optional): timestep for dynamics in picoseconds. 
+            Defaults to 0.002 ps (2 fs).
+            thermostat (str | None, optional): Desired thermostat. 
+            Defaults to the kernel's default thermostat.
             traj_out (int, optional): frequency to update trajectory. Defaults to 100.
             energy_out (int, optional): Frequency to print energy. Defaults to 10.
             restart_out (int, optional): Frequency to update restart structure. Defaults to 10.
             path (str, optional): _description_. Defaults to "./".
         """
-        if thermostat == None:
+        if thermostat is None:
             thermostat = self.kernel.defaults.ntt
-        self.kernel.set_ensemble(ensemble = "heat", 
-                                steps=steps, 
+        self.kernel.set_ensemble(ensemble = "heat",
+                                steps=steps,
                                 thermostat = thermostat,
                                 start_temp = start_temperature,
                                 end_temperature = end_temperature,
@@ -116,7 +181,7 @@ class MDClass:
         if restraints is not None:
             self.kernel.set_restraints(restraints)
         self.kernel.set_outputs(energy_out, restart_out, traj_out)
-        
+
         self.make_job(input_file_name=job_name,
                     output_file_name=job_name,
                     input_structure=input_structure,
@@ -146,9 +211,8 @@ class MDClass:
         else:
             ensemble = "nvt"
 
-        
-        self.kernel.set_ensemble(ensemble = ensemble, 
-                                steps=steps, 
+        self.kernel.set_ensemble(ensemble = ensemble,
+                                steps=steps,
                                 temperature = temperature,
                                 thermostat = thermostat,
                                 pressure = pressure,
