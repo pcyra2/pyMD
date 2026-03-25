@@ -8,6 +8,7 @@ from pymd.md.recipies import thermodynamic_integration as TI
 from pymd.md.recipies import standard_md
 from pymd.tools import io
 from pymd.md.md import MDClass
+from pymd.tools.slurm import Slurm
 
 @dataclass
 class ConfigClass:
@@ -26,7 +27,9 @@ class ConfigClass:
     topology_file: str|None = None
     cpus: int = 12
     gpus: int = 1
-    
+    hpc: dict = dict(partition = "compchemq",
+                    module_files = ["amber-uon/gcc11.3.0/24", "cuda-12.2.2"],
+                    wall_time = 168)
 
     def __init__(self):
         pass
@@ -62,6 +65,7 @@ def main():
     if os.path.isfile(config.input_file):
         c_data = io.json_read(config.input_file)
         config.from_dict(c_data)
+        io.json_dump(config.to_dict(), config.input_file)
 
     if config.pre_parameterised is False:
         raise NotImplementedError
@@ -73,6 +77,17 @@ def main():
     if config.pre_equilibrated is False:
         md = standard_md.initialise_system(md, path="./setup")
         for job in md.jobs:
+            # if job.gpu:
+            #     partition = "compchemq"
+            #     gpu=1
+            # else: 
+            #     partition = "defq"
+            #     gpu=0
+            # slurm_sub = Slurm(partition=partition)
+            # slurm_sub.set_modules(config.hpc["module_files"])
+            # slurm_sub.set_gpus(gpu)
+            # slurm_sub.set_ntasks(job.kernel.cores)
+            # slurm_sub.set_name(job.inputfile_name)
             job.exe()
 
 if __name__ == "__main__":

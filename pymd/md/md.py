@@ -1,8 +1,15 @@
+"""
+#TODO
+"""
+import copy
+import os
 from pymd.md.kernels.universal import MDJobClass
 from pymd.md.kernels.amber import Amber
 from pymd.user_configs.amber_defaults import AmberConfig
 from pymd.tools import convert
 import pymd.md.utilities.leap as PyLeap
+from pymd.tools.slurm import Slurm
+
 
 class MDClass:
     """Class for handling the MD simulations. It contains job classes which can be used to handle 
@@ -17,7 +24,7 @@ class MDClass:
         current_job (MDJobClass): The MDJobClass that is currently being run/generated.
         num_CPU (int): The number of CPU cores to run calculations on. Defaults to 1.
         num_GPU (int): The number of GPU's available to the MD calculation. Defaults to 0.
-
+        base_slurm (Slurm): #TODO
     """
     base_config: AmberConfig
     _backend: str
@@ -26,6 +33,7 @@ class MDClass:
     current_job: MDJobClass
     num_cpu: int = 1
     num_gpu: int = 0
+    base_slurm: Slurm|None
 
 
     def __init__(
@@ -43,6 +51,15 @@ class MDClass:
                                       " only AMBER is currently supported")
         self.jobs = []
 
+
+    def add_HPC(self, HPC: Slurm):
+        """
+        #TODO
+
+        Args:
+            HPC (Slurm): _description_
+        """
+        self.base_slurm = HPC
 
     def set_parmfile(
             self,
@@ -109,7 +126,8 @@ class MDClass:
                 steps_steepest: int|None = None,
                 traj_out: int = 10,
                 restart_out: int = 10,
-                energy_out: int = 10):
+                energy_out: int = 10,
+                hpc_sub: bool = False):
         """Sets up a minimisation job with the given parameters and adds it to the list of 
         jobs to be executed.
 
@@ -124,6 +142,7 @@ class MDClass:
             traj_out (int, optional): Frequency of trajectory output. Defaults to 10.
             restart_out (int, optional): Frequency of restart output. Defaults to 10.
             energy_out (int, optional): Frequency of energy output. Defaults to 10.
+            hpc_sub (bool): #TODO
         """
         self.kernel.set_ensemble(ensemble="min", steps=steps, steps_steepest=steps_steepest)
         self.kernel.set_restraints(restraints, self.kernel.config.restraint_wt)
@@ -135,8 +154,21 @@ class MDClass:
                     output_file_name=job_name,
                     run_path=run_path,
                     )
-        self.jobs.append(self.current_job)
 
+        if hpc_sub:
+            if self.base_slurm is None:
+                self.base_slurm = Slurm()
+            slurm_sub = copy.deepcopy(self.base_slurm)
+            slurm_sub.set_gpus(0)
+            slurm_sub.define_dirs(run_path, os.path.join(slurm_sub.hpc_run_dir, run_path))
+            slurm_sub.set_name(job_name)
+            slurm_sub.set_ntasks(self.num_cpu)
+            for module in slurm_sub.modules:
+                if "cuda" in module:
+                    slurm_sub.modules.remove(module)
+            self.current_job.attach_slurm(slurm_sub)
+
+        self.jobs.append(self.current_job)
 
     def heat(self,
             input_structure: str,
@@ -150,7 +182,8 @@ class MDClass:
             traj_out: int = 100,
             energy_out: int = 10,
             restart_out: int = 10,
-            path: str = "./"):
+            path: str = "./",
+            hpc_sub: bool = False):
         """Performs a standard heating workflow on the system
 
         Args:
@@ -169,6 +202,7 @@ class MDClass:
             energy_out (int, optional): Frequency to print energy. Defaults to 10.
             restart_out (int, optional): Frequency to update restart structure. Defaults to 10.
             path (str, optional): _description_. Defaults to "./".
+            hpc_sub (bool, optional): #TODO
         """
         if thermostat is None:
             thermostat = self.kernel.defaults.ntt
@@ -188,6 +222,16 @@ class MDClass:
                     input_structure=input_structure,
                     run_path=path)
         self.current_job.to_gpu()
+        if hpc_sub:
+            if self.base_slurm is None:
+                self.base_slurm = Slurm()
+            slurm_sub = copy.deepcopy(self.base_slurm)
+            slurm_sub.set_gpus(1)
+            slurm_sub.define_dirs(path, os.path.join(slurm_sub.hpc_run_dir, path))
+            slurm_sub.set_name(job_name)
+            slurm_sub.set_ntasks(self.num_cpu)
+            self.current_job.attach_slurm(slurm_sub)
+
         self.jobs.append(self.current_job)
 
 
@@ -205,6 +249,7 @@ class MDClass:
             traj_out: int = 100,
             energy_out: int = 10,
             restart_out: int = 10,
+            hpc_sub: bool = False
             ):
         """
         #TODO
@@ -224,6 +269,7 @@ class MDClass:
             traj_out (int, optional): _description_. Defaults to 100.
             energy_out (int, optional): _description_. Defaults to 10.
             restart_out (int, optional): _description_. Defaults to 10.
+            hpc_sub (bool, optional): #TODO
         """
         if pressure is not None:
             ensemble = "npt"
@@ -249,5 +295,15 @@ class MDClass:
                     input_structure=input_structure,
                     run_path=path)
         self.current_job.to_gpu()
+
+        if hpc_sub:
+            if self.base_slurm is None:
+                self.base_slurm = Slurm()
+            slurm_sub = copy.deepcopy(self.base_slurm)
+            slurm_sub.set_gpus(1)
+            slurm_sub.define_dirs(path, os.path.join(slurm_sub.hpc_run_dir, path))
+            slurm_sub.set_name(job_name)
+            slurm_sub.set_ntasks(self.num_cpu)
+            self.current_job.attach_slurm(slurm_sub)
 
         self.jobs.append(self.current_job)

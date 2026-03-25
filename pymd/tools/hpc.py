@@ -1,6 +1,7 @@
 """#TODO
 """
 import os
+import subprocess
 
 class PartitionClass:
     """
@@ -19,7 +20,7 @@ class PartitionClass:
     mem_per_node: int
     gpus_per_node: int
     nodes: int
-    walltime: int
+    wall_time: int
     qos: str|None
     name: str
 
@@ -46,7 +47,7 @@ class PartitionClass:
         self.gpus_per_node = gpus_per_node
         self.mem_per_node = mem_per_node
         self.nodes = nodes
-        self.walltime = walltime
+        self.wall_time = walltime
         self.qos = qos
 
     def __str__(self) -> str:
@@ -67,7 +68,7 @@ class HPC:
     name: str
     username: str
 
-    def __init__(self, name: str, login_node: str, username: str = os.getlogin()) -> None:
+    def __init__(self, name: str, login_node: str, username: str|None = None) -> None:
         """Initializes the HPC class. This allows allocation of name and how to connect
 
         Args:
@@ -78,7 +79,14 @@ class HPC:
         """
         self.name = name
         self.login_node = login_node
-        self.username = username
+        if username is None:
+            try:
+                self.username = os.getlogin()
+            except OSError:
+                print("WARN: Cannot find username. setting to the creators username :) => brara83")
+                self.username = "brara83"
+        else:
+            self.username = username
 
 
     def __str__(self) -> str:
@@ -93,196 +101,104 @@ class HPC:
         """
         self.partitions[partition.name] = partition
 
-
-ADA = HPC(name="ada", login_node="hpclogin02.ada.nottingham.ac.uk")
-ADA.add_partition(PartitionClass("q4bioq", 96, 8, 1900, 1, 672, "q4bio" ))
-ADA.add_partition(PartitionClass("defq", 96, 0, 361, 63, 168))
-ADA.add_partition(PartitionClass("ampereq", 96, 8, 747, 3, 168))
-ADA.add_partition(PartitionClass("ampere-mq", 96, 56, 747, 1, 168))
-ADA.add_partition(PartitionClass("compchemq", 56, 4, 384, 5, 168, "compchem"))
-
-
-
-class Slurm:
-    """Contains information for a slurm job. This allows for checking that the 
-    configuration is allowed. 
-
-    Attributes:
-        hpc (HPC): HPC to use
-        partition (PartitionClass): Partition to use
-        time (int): Job Wall time in hours
-        name (str): Name of the job
-        nodes (int): Number of nodes to use
-        mem (int): Memory per node in GB
-        gpus (int): Number of gpus to use
-        modules (list[str]): Modules to load using the "modules system"
-        array (bool): Whether to use an array job
-        array_len (int):
-        array_file (str): File to use for the array job
-        tasks_pn (int): slurm NTASKS_PER_NODE variable
-    """
-    hpc: HPC = ADA
-    partition: PartitionClass  = ADA.partitions["defq"]
-    time = 24
-    name = "pyMD"
-    nodes = 1
-    mem = 10
-    gpus = 0
-    modules: list[str]
-    array: bool = False
-    array_len: int
-    array_file: str|None = None
-    tasks_pn: int
-
-    def __init__(self,partition:str = "defq"):
-        """Initializes the job, by first selecting the partition
-        
-        Args:
-            partition (str, optional): Partition to use. Defaults to defq.
+    def sync(self, work_dir: str, hpc_work_dir: str, direction: str = "forward"):
         """
-        assert partition in self.hpc.partitions.keys(), \
-            f"Partition {partition} not recognized for HPC {self.hpc.name}."
-        self.partition = HPC.partitions[partition]
-
-
-    def __str__(self) -> str:
-        return f"{self.name} SLURM JOB on {self.hpc.name} on {self.partition}"
-
-    def set_time(self, time:int):
-        """Sets the maximum ammount of time for the slurm job. 
+        #TODO
 
         Args:
-            time (int): Maximum time for the slurm job.
+            work_dir (str): _description_
+            hpc_work_dir (str): _description_
+            direction (str, optional): _description_. Defaults to "forward".
         """
-        assert time <= self.partition.walltime, \
-            f"Time {time} exceeds max walltime for partition {self.partition} on HPC {self.hpc}."
-        self.time = time
+        if direction.casefold() == "forward":
+            print(f"INFO: syncing {work_dir} to {self.login_node}:{hpc_work_dir}/.")
+            print(f"INFO: Running command: rsync -azP {work_dir}* " \
+                  + f"{self.username}@{self.login_node}:{hpc_work_dir}/. ")
 
+            subprocess.run(["rsync", "-azP", f"{work_dir}/",
+                            f"{self.username}@{self.login_node}:{hpc_work_dir}/."],
+                            check=True)
+            print("INFO: Data synced.")
 
-    def set_name(self, name:str):
-        """Defines the job name
+        elif direction.casefold() == "backward":
+            print(f"INFO: syncing {self.login_node}:{hpc_work_dir}/* to {work_dir}")
+            print("INFO: Running command: rsync -azP " \
+                  + f"{self.username}@{self.login_node}:{hpc_work_dir}/* .")
+            subprocess.run(["rsync", "-azP",
+                            f"{self.username}@{self.login_node}:{hpc_work_dir}/", "."],
+                           cwd=work_dir, check=True)
+            print("INFO: Data synced.")
 
-        Args:
-            name (str): name of the job.
+    def _run_remote_command(self, command: str, error_check: bool = True):
         """
-        self.name = name
-
-
-    def set_nodes(self, nodes:int):
-        """Sets the number of nodes to use in the job.
+        #TODO
 
         Args:
-            nodes (int): Number of nodes to use
-        """
-        assert nodes <= self.partition.nodes, \
-            f"Nodes {nodes} exceeds max nodes for partition {self.partition} on HPC {self.hpc}."
-        self.nodes = nodes
+            command (str): _description_
+            error_check (bool, optional): _description_. Defaults to True.
 
-
-    def set_mem(self, mem:int):
-        """Allocates the memory for the job.
-
-        Args:
-            mem (int): Memory to allocate for the job.
-        """
-        assert mem <= self.partition.mem_per_node, \
-            f"Memory {mem} exceeds max memory for partition {self.partition} on HPC {self.hpc}."
-        self.mem = mem
-
-
-    def set_gpus(self, gpus:int):
-        """Allocates the number of GPUs for the job
-
-        Args:
-            gpus (int): Number of GPU's for the job.
-        """
-        assert gpus <= self.partition.gpus_per_node, \
-        	f"GPUs {gpus} exceeds max GPUs for partition {self.partition} on HPC {self.hpc}."
-        self.gpus = gpus
-
-
-    def set_modules(self, modules:list[str]):
-        """Allocates the modules that are required for the job
-
-        Args:
-            modules (list[str]): List of modules to be loaded for the job. #TODO Add a way to 
-            	define modules that are available on the HPC.
-        """
-        self.modules = modules
-
-
-    def set_ntasks(self, tasks:int, per_node:bool = True):
-        """Allocates the SLURM_NTASKS for the job
-
-        Args:
-            tasks (int): Number of tasks for the job.
-            per_node (bool, optional): Whether to set the SLURM_NTASKS_PER_NODE for the job. 
-            	Defaults to True. #TODO implement False
-        """
-        if per_node:
-            self.tasks_pn = tasks
-        else:
-            raise NotImplementedError("Setting total tasks not implemented yet.")
-        self.tasks_pn = tasks
-
-
-    def set_array(self, array_file:str, length: int|None = None, check:bool = True):
-        """Enables the use of array jobs
-        
-        Args:
-            array_file (str): Path to file where each line is a job.
-            length (int|None): The length of the array job. If None, the length is 
-            	determined from the array file. 
-            check (bool): Whether to check if the array file exists. Defaults to True.
-            """
-        if check:
-            assert os.path.isfile(array_file), f"Array file {array_file} not found."
-        self.array = True
-        if length is None:
-            with open(array_file, "r", encoding="UTF-8") as f:
-                lines = f.readlines()
-            self.array_len = len(lines)
-        else:
-            self.array_len = length
-        self.array_file = array_file
-
-
-    def gen_script(self, command:str)->str:
-        """Generates the SLURM script for the job.
-
-        Args:
-            command (str): The command to run. 
-        
         Returns:
-            str: The SLURM file
+            _type_: _description_
         """
-        file = f"""#!/bin/bash
-#SBATCH --job-name={self.name}
-#SBATCH --partition={self.partition.name}
-#SBATCH --nodes={self.nodes}
-#SBATCH --time={self.time}:00:00
-#SBATCH --mem={self.mem}GB
-#SBATCH --ntasks-per-node={self.tasks_pn}"""
-        if self.partition.qos is not None:
-            file += f"\n#SBATCH --qos={self.partition.qos}"
-        if self.gpus > 0:
-            file += f"\n#SBATCH --gres=gpu:{self.gpus}"
-        if self.array is True:
-            file += f"\n#SBATCH --array=1-{self.array_len}"
-        file += "\n\n"
+        return subprocess.run(["ssh", f"{self.username}@{self.login_node}", command],
+                       check=error_check, encoding="UTF-8",
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-        if self.modules:
-            for module in self.modules:
-                file += f"module load {module}\n"
+    def remove_dir(self, hpc_work_dir: str):
+        """
+        #TODO
 
-        file += "\n"
-        if self.array is True:
-            file += f"ARRAY_FILE=\"{self.array_file}\"\n"
-            file += "CMD=$(cat $ARRAY_FILE | head -n $(($SLURM_ARRAY_TASK_ID*1)) | tail -n 1)\n"
-            file += "echo \"Running job: $SLURM_ARRAY_TASK_ID\"\n"
-            file += "echo \"Command: $CMD\"\n"
-            file += "eval $CMD \n"
+        Args:
+            hpc_work_dir (str): _description_
+        """
+        print(f"INFO: deleting directory in `{hpc_work_dir}` on {self.name}")
+        _ = self._run_remote_command(f"rm -r {hpc_work_dir}")
 
-        file += f"\n\n{command}\n"
 
-        return file
+    def make_dir(self, hpc_work_dir: str):
+        """
+        #TODO
+
+        Args:
+            hpc_work_dir (str): _description_
+        """
+        print(f"INFO: Making directory `{hpc_work_dir}` on {self.name}")
+        _ = self._run_remote_command(f"mkdir {hpc_work_dir}", error_check=False)
+
+
+    def submit_slurm(self, path: str, file: str) -> int:
+        """
+        #TODO
+
+        Args:
+            path (str): _description_
+            file (str): _description_
+
+        Returns:
+            int: _description_
+        """
+        print(f"INFO: Submitting slurm job {file} from {path}")
+        output = self._run_remote_command(f"cd {path} ; sbatch {file}")
+        stdout = output.stdout
+        print(f"INFO: Job ID is {stdout.split()[-1]}")
+        return int(stdout.split()[-1])
+
+
+    def check_slurm_status(self, slurm_id: int) -> str:
+        """
+        #TODO
+
+        Args:
+            slurm_id (int): _description_
+
+        Returns:
+            str: _description_
+        """
+        output = self._run_remote_command("squeue -u $USER")
+        stdout = output.stdout
+        for line in stdout.rsplit("\n"):
+            segments = line.split()
+            if len(segments) > 1:
+                if str(slurm_id) == segments[0]:
+                    return segments[4]
+        return "CD"

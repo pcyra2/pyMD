@@ -12,4 +12,5 @@ temp_dir = "./test/temp_dir"
 def test_tleap():
     io.make_dir(temp_dir)
     subprocess.run(["wget", test_pdb_location], cwd=temp_dir)
+    io.remove_dir(temp_dir, force=True)
     # parameterise.gen_leap()

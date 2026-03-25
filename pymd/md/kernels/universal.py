@@ -6,6 +6,8 @@ import time
 import copy
 
 from pymd.md.kernels.amber import Amber
+from pymd.tools.slurm import Slurm
+from pymd.tools import io
 
 
 class MDJobClass:
@@ -22,7 +24,7 @@ class MDJobClass:
     kernel: Amber
     wall_time: float
     gpu: bool = False
-
+    hpc: Slurm = None
 
     def __init__(self,
                 inputfile_name: str,
@@ -30,6 +32,15 @@ class MDJobClass:
                 outputfile_name:str,
                 run_path: str = "./"
                 ):
+        """
+        #TODO
+
+        Args:
+            inputfile_name (str): _description_
+            input_structure (str): _description_
+            outputfile_name (str): _description_
+            run_path (str, optional): _description_. Defaults to "./".
+        """
         self.inputfile_name = inputfile_name
         self.outputfile_name = outputfile_name
         self.complete = False
@@ -79,23 +90,30 @@ class MDJobClass:
         """
         self.gpu = False
 
-
-    def exe(self, gpu: bool|None = None):
+    def attach_slurm(self, hpc:Slurm):
         """
         #TODO
 
         Args:
-            GPU (bool | None, optional): _description_. Defaults to None.
+            hpc (Slurm): _description_
+        """
+        self.hpc = hpc
+
+    def exe(self, gpu: bool|None = None, hpc: Slurm|None = None):
+        """
+        #TODO
+
+        Args:
+            gpu (bool | None, optional): _description_. Defaults to None.
+            hpc (Slurm | None, optional): _description_. Defaults to None.
         """
         if gpu is not None and gpu is True:
             self.to_gpu()
         elif gpu is not None and gpu is False:
             self.to_cpu()
+        if hpc is not None:
+            self.hpc = hpc
 
-        self.run_line = self.kernel._gen_runlines(input_file_name=self.inputfile_name, 
-                                                input_structure_name=self.input_structure,
-                                                output_file_name=self.outputfile_name, 
-                                                gpu=self.gpu)
         if self.gpu:
             if os.path.isfile(self.kernel.config.GPUPath) is False:
                 assert os.path.isfile(self.kernel.config.CPUPath)
@@ -103,12 +121,34 @@ class MDJobClass:
         else:
             assert os.path.isfile(self.kernel.config.CPUPath)
 
-        start = time.perf_counter()
-        self.kernel.exec(input_file_name=self.inputfile_name,
-                        output_file_name=self.outputfile_name,
-                        input_structure_name=self.input_structure,
-                        path=self.run_path,
-                        gpu=self.gpu)  
-        stop = time.perf_counter()
-        self.complete = True
-        self.wall_time = stop - start
+        self.run_line = self.kernel._gen_runlines(
+                            input_file_name=self.inputfile_name,
+                            input_structure_name=self.input_structure,
+                            output_file_name=self.outputfile_name,
+                            gpu=self.gpu)
+        if self.hpc is not None:
+            assert self.run_line == self.hpc.local_file_dir, \
+                "ERR: There is a mis-match between the cwd of the slurm object and the md job."
+
+            ## Generate slurm submission script
+            slurm_script = self.hpc.gen_script(self.run_line)
+            io.text_dump(slurm_script, os.path.join(self.run_path, self.hpc.file_name))
+
+            ## Sync the files, submit, and wait for end.
+            self.hpc.submit(wait_for_finish=True)
+
+            ## Sync the files back
+            self.hpc.hpc.sync(self.run_path, self.hpc.hpc_run_dir, direction="backward")
+            if self.hpc.job.status == "completed":
+                self.complete = True
+            self.wall_time = self.hpc.job.wall_time
+        else:
+            start = time.perf_counter()
+            self.kernel.exec(input_file_name=self.inputfile_name,
+                            output_file_name=self.outputfile_name,
+                            input_structure_name=self.input_structure,
+                            path=self.run_path,
+                            gpu=self.gpu)
+            stop = time.perf_counter()
+            self.complete = True
+            self.wall_time = stop - start
