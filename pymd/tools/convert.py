@@ -24,13 +24,13 @@ class TimeClass:
         self.short_hand = short_hand
         self.relative_value = relative_value
 
-TIME_UNITS = [TimeClass("seconds", "s", 1.0),
-        TimeClass("minutes", "min", 60.0),
-        TimeClass("hours", "hr", 3600.0),
-        TimeClass("days", "d", 86400.0),
-        TimeClass("nanoseconds", "ns", 1e-9),
-        TimeClass("picoseconds", "ps", 1e-12),
-        TimeClass("femtoseconds", "fs", 1e-15)]
+TIME_UNITS = [TimeClass(name="seconds", short_hand="s", relative_value=1.0),
+        TimeClass(name="minutes", short_hand="min", relative_value=60.0),
+        TimeClass(name="hours", short_hand="hr", relative_value=3600.0),
+        TimeClass(name="days", short_hand="d", relative_value=86400.0),
+        TimeClass(name="nanoseconds", short_hand="ns", relative_value=1e-9),
+        TimeClass(name="picoseconds", short_hand="ps", relative_value=1e-12),
+        TimeClass(name="femtoseconds", short_hand="fs", relative_value=1e-15)]
 
 def get_time(unit:str)->TimeClass:
     """Used as a helper function to find the timeClass object.
@@ -65,8 +65,8 @@ def time(
         float: time in the specified unit
     """
 
-    in_unit_time = get_time(in_unit)
-    out_unit_time =  get_time(out_unit)
+    in_unit_time = get_time(unit=in_unit)
+    out_unit_time =  get_time(unit=out_unit)
 
     return (in_time * in_unit_time.relative_value)/out_unit_time.relative_value
 
@@ -75,7 +75,7 @@ def steps_to_time(
         steps: int,
         time_units: str = "s",
         timestep: float = 0.002,
-        timestep_units: str = "ps")->float:
+        timestep_units: str = "ps") -> float:
     """Converts steps to real time
 
     Args:
@@ -88,16 +88,16 @@ def steps_to_time(
     Returns:
         float: total time
     """
-    _time_units = get_time(time_units)
+    _time_units = get_time(unit=time_units)
 
-    return (steps*time(timestep, timestep_units))/_time_units.relative_value
+    return (steps*time(in_time=timestep, in_unit=timestep_units))/_time_units.relative_value
 
 
 def time_to_steps(
         sim_time: float,
         time_units: str = "ps",
-        timestep: float = time(2,"fs"),
-        timestep_units: str = "ps")->int:
+        timestep: float = time(in_time=2,in_unit="fs"),
+        timestep_units: str = "ps") -> int:
     """
 
     Args:
@@ -111,6 +111,6 @@ def time_to_steps(
             sim_time with the provided timestep
     """
     # timestep = time(timestep, timestep_units, "ps")
-    sim_time_dt_units = time(sim_time, time_units, timestep_units)
+    sim_time_dt_units = time(in_time=sim_time, in_unit=time_units, out_unit=timestep_units)
 
     return int(sim_time_dt_units / timestep)

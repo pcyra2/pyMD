@@ -23,7 +23,7 @@ def gen_leap(lig_code:str,
             amber_coor: str = "complex.rst7",
             forcefield: str = "ff14SB",
             box: float = 12.0
-            ):
+            ) -> str:
     """#TODO
     """
     assert forcefield in KNOWN_FORCEFIELDS.keys(), f"ERROR: Forcefield {forcefield} unknown"
@@ -49,16 +49,16 @@ saveamberparm complex {parm_file} {amber_coor}
 quit"""
     return file
 
-def run_leap(path: str):
+def run_leap(path: str) -> None:
     """
     Runs tleap on the leap.in file
 
     Args:
         path (str): location of the leap.in file
     """
-    log = subprocess.run(["tleap", "-f", "leap.in"], cwd = path,
+    log = subprocess.run(args=["tleap", "-f", "leap.in"], cwd = path,
                             text = True, capture_output = True, check=True)
-    io.text_dump(log.stdout, os.path.join(path, "leap.log"))
+    io.text_dump(text=log.stdout, path=os.path.join(path, "leap.log"))
 
 def gen_leap_ti(
         ligand_name: str,
@@ -68,7 +68,7 @@ def gen_leap_ti(
         protein_out: str = "protein",
         forcefield: str = "ff14SB",
         box: float = 12.0,
-        gaff: str|None = None):
+        gaff: str|None = None) -> str:
     """Generates the TI leap file which generates the dual-protein leap file.
 
     Args:

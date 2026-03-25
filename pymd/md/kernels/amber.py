@@ -19,16 +19,16 @@ class Amber:
 
     def __init__(
             self,
-            config: AmberConfig = AmberConfig()):
-        self.defaults = copy.deepcopy(config)
-        self.config = copy.deepcopy(config)
+            config: AmberConfig = AmberConfig()) -> None:
+        self.defaults = copy.deepcopy(x = config)
+        self.config = copy.deepcopy(x = config)
 
     def _gen_runlines(
             self,
             input_file_name: str,
             input_structure_name: str,
             output_file_name: str|None = None,
-            gpu: bool = False):
+            gpu: bool = False) -> str:
         """Generates the command that runs the AMBER calculation
 
         Args:
@@ -55,7 +55,7 @@ class Amber:
             output_file_name: str,
             input_structure_name: str,
             gpu: bool = False,
-            path: str = "./"):
+            path: str = "./") -> subprocess.CompletedProcess[bytes]:
         """
         Runs the amber software as part of the script.
     
@@ -68,27 +68,27 @@ class Amber:
         Returns:
             outlines (str): The CLI output from runnning the command.
         """
-        inputfile = self.config.gen_input_file(input_file_name)
-        if os.path.isfile(os.path.join(path, input_file_name)) is False:
-            with open(os.path.join(path, input_file_name), "w", encoding="UTF-8") as f:
+        inputfile = self.config.gen_input_file(filename = input_file_name)
+        if os.path.isfile(path = os.path.join(path, input_file_name)) is False:
+            with open(file = os.path.join(path, input_file_name), mode = "w", encoding = "UTF-8") as f:
                 f.writelines(inputfile)
 
-        assert os.path.isfile(os.path.join(path, input_structure_name)), \
+        assert os.path.isfile(path = os.path.join(path, input_structure_name)), \
             f"Input structure file is not found: {input_structure_name}"
 
-        command = self._gen_runlines(input_file_name=input_file_name,
-                            input_structure_name=input_structure_name,
-                            output_file_name=output_file_name,
-                            gpu=gpu)
+        command = self._gen_runlines(input_file_name = input_file_name,
+                            input_structure_name = input_structure_name,
+                            output_file_name = output_file_name,
+                            gpu = gpu)
 
         print(f"INFO: Running command: {command}")
-        with open(f"{output_file_name}.out", "w", encoding="UTF-8") as f:
-            outlines = subprocess.run([command],stdout=f, cwd=path, check=True)
+        with open(file = f"{output_file_name}.out", mode = "w", encoding="UTF-8") as f:
+            outlines = subprocess.run(args = [command],stdout=f, cwd=path, check=True)
         return outlines
 
     def set_global(
             self,
-            parmfile: str):
+            parmfile: str) -> None:
         """
         Defines the parameter and coordinate files for the initial structure. 
 
@@ -102,7 +102,7 @@ class Amber:
             self,
             energy: int,
             restart: int,
-            trajectory: int):
+            trajectory: int) -> None:
         """Sets the output frequencies for the calculation. 
 
         Args:
@@ -115,7 +115,7 @@ class Amber:
 
     def set_cores(
             self,
-            cores: int):
+            cores: int) -> None:
         """Sets the number of cores to use for the MD simulation
 
         Args:
@@ -125,7 +125,7 @@ class Amber:
         self.cores = cores
 
 
-    def set_restraints(self, restraint_mask: str|None, restraint_wt: float = 5.0):
+    def set_restraints(self, restraint_mask: str|None, restraint_wt: float = 5.0) -> None:
         """
         Allows for simple restraints using ambers selection algebra
 
@@ -136,7 +136,7 @@ class Amber:
         self.config.set_restraints(restraint_mask=restraint_mask, restraint_wt=restraint_wt)
 
 
-    def set_ensemble(self, ensemble:str, steps: int,  **kwargs):
+    def set_ensemble(self, ensemble:str, steps: int,  **kwargs) -> None:
         """
         Initialise an ensemble for the simulation. Allowed ensembles are: min, heat, nvt, npt
         """
@@ -152,19 +152,19 @@ class Amber:
                 steps_steepest = kwargs["steps_steepest"]
             else:
                 steps_steepest = None
-            self.config.set_minimisation(steps, steps_steepest)
+            self.config.set_minimisation(steps_total=steps, steps_steepest=steps_steepest)
         elif ensemble == "heat":
             # assert "steps" in kwargs, "Must provide number of steps for heating ensemble"
             # steps = kwargs["steps"]
 
             ## Obtain thermostat, if not provided use default
             if "thermostat" in kwargs:
-                self.config.set_thermostat(kwargs["thermostat"])
+                self.config.set_thermostat(thermostat=kwargs["thermostat"])
             else:
-                self.config.set_thermostat(self.defaults.ntt)
+                self.config.set_thermostat(thermostat=self.defaults.ntt)
             ## Usually you are heating from zero. So are not restarting a dynamics simulation.
             if "restart" in kwargs:
-                self.config.restart_dynamics(kwargs["restart"])
+                self.config.restart_dynamics(restart=kwargs["restart"])
             else:
                 self.config.restart_dynamics(restart=False)
 
@@ -206,12 +206,12 @@ class Amber:
 
             ## Obtain thermostat, if not provided use default
             if "thermostat" in kwargs:
-                self.config.set_thermostat(kwargs["thermostat"])
+                self.config.set_thermostat(thermostat=kwargs["thermostat"])
             else:
-                self.config.set_thermostat(self.defaults.ntt)
+                self.config.set_thermostat(thermostat=self.defaults.ntt)
             ## Usually you are restarting a dynamics simulation.
             if "restart" in kwargs:
-                self.config.restart_dynamics(kwargs["restart"])
+                self.config.restart_dynamics(restart=kwargs["restart"])
             else:
                 self.config.restart_dynamics(restart=True)
 
@@ -222,8 +222,8 @@ class Amber:
                 temp = self.defaults.temp0
 
 
-            self.config.set_temperature(temp)
-            self.config.set_pressure_scaling(0) # No pressure scaling for NVT ensemble
+            self.config.set_temperature(temperature=temp)
+            self.config.set_pressure_scaling(pressure_scaling=0) # No pressure scaling for NVT ensemble
 
             if "timestep" in kwargs:
                 dt = kwargs["timestep"]
@@ -238,19 +238,19 @@ class Amber:
                 shake = self.defaults.nct
 
             self.config.set_dynamics(timestep=dt, shake=shake)
-            self.config.set_ensemble("nvt")
+            self.config.set_ensemble(ensemble="nvt")
         elif ensemble == "npt":
             # assert "steps" in kwargs, "Must provide number of steps for npt ensemble"
             # steps = kwargs["steps"]
 
             ## Obtain thermostat, if not provided use default
             if "thermostat" in kwargs:
-                self.config.set_thermostat(kwargs["thermostat"])
+                self.config.set_thermostat(thermostat=kwargs["thermostat"])
             else:
-                self.config.set_thermostat(self.defaults.ntt)
+                self.config.set_thermostat(thermostat=self.defaults.ntt)
             ## Usually you are restarting a dynamics simulation.
             if "restart" in kwargs:
-                self.config.restart_dynamics(kwargs["restart"])
+                self.config.restart_dynamics(restart=kwargs["restart"])
             else:
                 self.config.restart_dynamics(restart=True)
 
@@ -261,16 +261,16 @@ class Amber:
                 temp = self.defaults.temp0
 
             if "pressure_scaling" in kwargs:
-                self.config.set_pressure_scaling(kwargs["pressure_scaling"])
+                self.config.set_pressure_scaling(pressure_scaling=kwargs["pressure_scaling"])
             else:
-                self.config.set_pressure_scaling(self.defaults.ntp)
+                self.config.set_pressure_scaling(pressure_scaling=self.defaults.ntp)
 
             if "barostat" in kwargs:
-                self.config.set_barostat(kwargs["barostat"])
+                self.config.set_barostat(barostat=kwargs["barostat"])
             else:
-                self.config.set_barostat(self.defaults.ntb)
+                self.config.set_barostat(barostat=self.defaults.ntb)
 
-            self.config.set_temperature(temp)
+            self.config.set_temperature(temperature=temp)
 
             if "timestep" in kwargs:
                 dt = kwargs["timestep"]
@@ -286,14 +286,14 @@ class Amber:
 
             if "pressure" in kwargs:
                 pressure = kwargs["pressure"]
-                self.config.set_pressure(pressure)
+                self.config.set_pressure(pressure=pressure)
             else:
-                self.config.set_pressure(self.defaults.pres0)
+                self.config.set_pressure(pressure=self.defaults.pres0)
 
             self.config.set_dynamics(timestep=dt, shake=shake)
-            self.config.set_ensemble("npt")
+            self.config.set_ensemble(ensemble="npt")
 
 
-    def _reset_config(self):
+    def _reset_config(self) -> None:
         """Reset the configuration to defaults."""
-        self.config = copy.deepcopy(self.defaults)
+        self.config = copy.deepcopy(x=self.defaults)

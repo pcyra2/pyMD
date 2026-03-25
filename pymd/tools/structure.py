@@ -16,7 +16,7 @@ class Atom:
     z: float
     atom_type: str
 
-    def __init__(self, element: str, x: float, y: float, z: float):
+    def __init__(self, element: str, x: float, y: float, z: float) -> None:
         """Initialises the atom object
         
         Args:
@@ -31,12 +31,12 @@ class Atom:
         self.z = z
 
 
-    def echo(self):
+    def echo(self) -> str:
         """Prints the coordinates of the atom in .xyz format."""
         return f"{self.element} {self.x} {self.y} {self.z}"
 
 
-    def translate_x(self, distance: float):
+    def translate_x(self, distance: float) -> None:
         """Translates the atom in the x-direction by the given distance
         
         Args:
@@ -45,7 +45,7 @@ class Atom:
         self.x += distance
 
 
-    def translate_y(self, distance: float):
+    def translate_y(self, distance: float) -> None:
         """Translates the atom in the y-direction by the given distance
         
         Args:
@@ -54,7 +54,7 @@ class Atom:
         self.y += distance
 
 
-    def translate_z(self, distance: float):
+    def translate_z(self, distance: float) -> None:
         """Translates the atom in the z-direction by the given distance
         
         Args:
@@ -63,7 +63,7 @@ class Atom:
         self.z += distance
 
 
-    def add_atom_type(self, atom_type: str):
+    def add_atom_type(self, atom_type: str) -> None:
         """Allows for allocating atom types to an atom for use in a forcefield.
         
         Args:
@@ -85,10 +85,10 @@ class Molecule:
     atoms: list[Atom]
     nat: int
 
-    def __init__(self, ):
+    def __init__(self, ) -> None:
         """Initialises the molecule class. """
 
-    def from_atoms_list(self, atoms: list[Atom], charge: int, spin: int):
+    def from_atoms_list(self, atoms: list[Atom], charge: int, spin: int) -> None:
         """Initialises a molecule object from an atom list
         
         Args:
@@ -101,7 +101,7 @@ class Molecule:
         self.charge = charge
         self.spin = spin
 
-    def from_xyz(self, lines:list[str], charge:int, spin:int):
+    def from_xyz(self, lines:list[str], charge:int, spin:int) -> None:
         """
         Initialises a molecule object from the text within a .xyz file
 
@@ -111,12 +111,12 @@ class Molecule:
             spin (int): Spin of the system (2S not 2S+1)
         """
         if isinstance(lines, str):
-            lines = lines.split("\n")
+            lines = lines.split(sep="\n")
         self.nat = int(lines[0])
         atoms = []*self.nat
         for i in range(self.nat):
             items = lines[i+2].split()
-            atoms[i] = Atom(items[0], float(items[1]), float(items[2]), float(items[3]))
+            atoms[i] = Atom(element=items[0], x=float(items[1]), y=float(items[2]), z=float(items[3]))
         self.atoms = atoms
         self.charge = charge
         self.spin = spin

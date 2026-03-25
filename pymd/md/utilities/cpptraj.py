@@ -12,7 +12,7 @@ def extract_ligand(
         parm_file: str,
         structure_file: str,
         resid: int,
-        output_file: str):
+        output_file: str) -> str:
     """Uses cpptraj to extract a ligand. Strips all atoms that aren't the resid.
 
     Args:
@@ -37,7 +37,7 @@ def extract_protein(
     structure_file: str,
     resid: int,
     output_file: str
-    ):
+    ) -> str:
     """
 
     Args:
@@ -62,9 +62,9 @@ def run_cpptraj(
         job_file: str,
         cpptraj_out: str,
         cpptraj_in: str = "cpptraj.in",
-        path: str = "./"):
+        path: str = "./") -> None:
     """#TODO
     """
-    io.text_dump(job_file, os.path.join(path, cpptraj_in))
-    with open(os.path.join(path, cpptraj_out), "w", encoding="UTF-8") as f:
-        subprocess.run(["cpptraj", "-i", cpptraj_in], cwd=path, stdout=f, check=True)
+    io.text_dump(text=job_file, path=os.path.join(path, cpptraj_in))
+    with open(file=os.path.join(path, cpptraj_out), mode="w", encoding="UTF-8") as f:
+        subprocess.run(args=["cpptraj", "-i", cpptraj_in], cwd=path, stdout=f, check=True)

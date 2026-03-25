@@ -5,14 +5,14 @@ import os
 import shutil
 import re
 
-def text_dump(text: list[str]|str, path: str):
+def text_dump(text: list[str]|str, path: str) -> None:
     """Prints a text file, 
 
     Args:
         text (str|list[str]): accepts either array of text or string.
         path (str): file path to write to. 
     """
-    with open(path, "w", encoding="UTF-8")as f:
+    with open(file=path, mode="w", encoding="UTF-8")as f:
         if isinstance(text, str):
             print(text, file=f, end="")
         else:
@@ -29,14 +29,14 @@ def text_read(path: str)->list[str]:
     Returns:
         text (list[str]): list of lines in the file.
     """
-    with open(path, "r", encoding="UTF-8") as f:
+    with open(file=path, mode="r", encoding="UTF-8") as f:
         text = f.readlines()
         f.close()
     clean = [line.replace("\n","") for line in text]
     return clean
 
 
-def json_dump(data: dict, path: str,):
+def json_dump(data: dict, path: str,) -> None:
     """
     The function `jsonDump` takes a dictionary and a file path as input, then writes 
     the dictionary to a JSON file at the specified path.
@@ -48,11 +48,11 @@ def json_dump(data: dict, path: str,):
         be the location where you want to store the JSON data.
     """
     try:
-        with open(path, "w", encoding="UTF-8") as f:
-            json.dump(data, f, indent="\t", sort_keys=True, )
+        with open(file=path, mode="w", encoding="UTF-8") as f:
+            json.dump(obj=data, fp=f, indent="\t", sort_keys=True, )
     except TypeError:
-        with open(path, "w", encoding="UTF-8") as f:
-            json.dump(data, f, indent="\t",)
+        with open(file=path, mode="w", encoding="UTF-8") as f:
+            json.dump(obj=data, fp=f, indent="\t",)
 
 
 def json_read(path: str)->dict:
@@ -68,8 +68,8 @@ def json_read(path: str)->dict:
         text (dict): The function `jsonRead` reads a JSON file located at the specified `path`
         and returns the contents of the file as a Python dictionary.
     """
-    with open(path, "r", encoding="UTF-8") as f:
-        text = json.load(f, object_hook=parse_float_keys)
+    with open(file=path, mode="r", encoding="UTF-8") as f:
+        text = json.load(fp=f, object_hook=parse_float_keys)
         f.close()
     return text
 
@@ -97,7 +97,7 @@ def parse_float_keys(dct: dict)->dict:
     return rval
 
 
-def make_dir(path: str):
+def make_dir(path: str) -> None:
     """Makes directory in path if it doesn't already exist
 
     Args:
@@ -105,25 +105,25 @@ def make_dir(path: str):
     """
     print(f"INFO: Generating {path}")
     try:
-        os.mkdir(path)
+        os.mkdir(path=path)
     except FileExistsError:
         print(f"INFO: {path} already exists")
 
-def remove_dir(path: str, force: bool = True):
+def remove_dir(path: str, force: bool = True) -> None:
     """Removes directory in path if it exists, irrespective of contents.
     
     Args:
         path (str): Directory path
         force (bool, optional): Whether to forcibly remove a directory if it is not empty. Defaults to True
     """
-    if os.path.isdir(path):
+    if os.path.isdir(s=path):
         if force is False:
             try:
-                os.removedirs(path)
+                os.removedirs(name=path)
             except OSError:
                 print(f"WARNING: {path} is not empty")
         else:
-            shutil.rmtree(path)
+            shutil.rmtree(path=path)
 
 def grep(file: str, string: str) -> list[str]:
     """
@@ -136,11 +136,11 @@ def grep(file: str, string: str) -> list[str]:
     Returns:
         lines (list[str]): Lines containing grep pattern.
     """
-    contents = text_read(file)
-    regexp = re.compile(string)
+    contents = text_read(path=file)
+    regexp = re.compile(pattern=string)
     lines = []
     for line in contents:
-        if re.search(regexp, line):
+        if re.search(pattern=regexp, string=line):
             print(line)
             lines.append(line)
     return lines
