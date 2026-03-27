@@ -70,6 +70,25 @@ class AmberConfig:
     _param_file: str
     _input_coord_file: str
 
+    ## Thermodynamic Integration config
+    icfe: int = 0 # whether to do a free energy calculation. 0 = No, 1 = Yes
+    clambda: float # Value of Lambda
+    timask1: str # Selects the atoms unique in system 1
+    timask2: str # Selects the atoms unique in system 2
+
+    ## Soft Core config
+    ifsc: int = 0 # Whether to use soft core potentials. 0 = No, 1 = Yes
+    scalpha: float = 0.5 # Alpha parameter. Defaults to 0.5
+    scbeta: float = 12 # The Beta parameter for SoftCore. Defaults to 12
+    logdvdl: int = 0 # dumps dv/dlam at the end for processing
+    scmask1: str # The mask for soft core atoms in system 1
+    scmask2: str # The mask for soft core atoms in system 2
+
+    ## MBAR config
+    ifmbar: int = 0 # Whether to generate MBAR outputs. 0 = No, 1 = Yes
+    mbar_states: int # The  total number of Lambda windows
+    mbar_lambda: str # A list of comma sepparated floats defining the lambda windows
+        # e.g. `0.0, 0.2, 0.4, 0.6, 0.8, 1.0,`
 
     def __init__(self) -> None:
         if os.path.isfile(path=self.CPUPath) is False:
@@ -248,15 +267,16 @@ class AmberConfig:
 
         """
         if isinstance(thermostat, str):
-            thermostat = THERMOSTATS.get(thermostat.casefold())
-            if thermostat is None:
+            thermostat_int = THERMOSTATS.get(thermostat.casefold())
+            if thermostat_int is None:
                 raise ValueError(f"Thermostat {thermostat} not recognised, known " \
                                 + f"thermostats are: {list(THERMOSTATS.keys())}")
         elif isinstance(thermostat, int):
             if thermostat not in THERMOSTATS.values():
                 raise ValueError(f"Thermostat {thermostat} not recognised, known " \
                                 + f"thermostats are: {list(THERMOSTATS.values())}")
-        self.ntt = thermostat
+            thermostat_int = thermostat
+        self.ntt = thermostat_int
 
     def set_pressure_scaling(self, pressure_scaling: int|str) -> None:
         """Sets the pressure scaling for the simulation
@@ -382,7 +402,7 @@ class AmberConfig:
             sc_mask_2: str,
             lambda_list: list[float],
             mbar: bool
-            ):
+            ) -> None:
         """
         #TODO
 
@@ -414,7 +434,7 @@ class AmberConfig:
             self.mbar_lambda = lambda_str
 
 
-    def set_lambda_value(self, lambda_value: float):
+    def set_lambda_value(self, lambda_value: float) -> None:
         """
         #TODO
 
