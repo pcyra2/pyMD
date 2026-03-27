@@ -1,4 +1,4 @@
-import pymd.md.utilities.mutate as mutate 
+import pymd.tools.pdb as pdb 
 import pymd.tools.io as io
 
 import os
@@ -8,7 +8,7 @@ file_loc = "./test/test_data/"
 
 def test_mutate():
     original_pdb = io.text_read(os.path.join(file_loc, "1N23.pdb"))
-    mutated_pdb = mutate.mutate_residue(original_pdb, 112, "MET")
+    mutated_pdb = pdb.mutate_residue(original_pdb, 112, "MET")
     reference_mutant = io.text_read(os.path.join(file_loc, "1N23_mutated112-MET.pdb"))
 
     for i, line in enumerate(mutated_pdb):

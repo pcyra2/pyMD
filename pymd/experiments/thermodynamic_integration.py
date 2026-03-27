@@ -31,6 +31,7 @@ class ConfigClass:
                     module_files = ["amber-uon/gcc11.3.0/24", "cuda-12.2.2"],
                     wall_time = 168)
 
+
     def __init__(self):
         pass
 
@@ -80,7 +81,7 @@ def main():
             # if job.gpu:
             #     partition = "compchemq"
             #     gpu=1
-            # else: 
+            # else:
             #     partition = "defq"
             #     gpu=0
             # slurm_sub = Slurm(partition=partition)
