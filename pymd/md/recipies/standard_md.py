@@ -5,13 +5,13 @@ from pymd.md.md import MDClass
 
 def initialise_system(mm: MDClass,
         min_steps: int=10000,
-        heat_steps: int=convert.time_to_steps(20, "ps", 0.002),
-        nvt_steps: int=convert.time_to_steps(100, "ps", 0.002),
-        npt_steps: int=convert.time_to_steps(10, "ns", 0.002),
+        heat_steps: int=convert.time_to_steps(sim_time=20, time_units="ps", timestep=0.002),
+        nvt_steps: int=convert.time_to_steps(sim_time=100, time_units="ps", timestep=0.002),
+        npt_steps: int=convert.time_to_steps(sim_time=10, time_units="ns", timestep=0.002),
         temperature: float=300.0,
         pressure: float = 1.0,
         path: str="./",
-        execute:bool = False)->MDClass:
+        execute:bool = False) -> MDClass:
     """
     
 
@@ -32,32 +32,32 @@ def initialise_system(mm: MDClass,
     Returns:
         MDClass: _description_
     """
-    assert os.path.exists(path), f"Path {path} does not exist"
+    assert os.path.exists(path=path), f"Path {path} does not exist"
 
-    mm.minimize("start.rst7",
-                "min1", 2000,
-                "'!(WAT NA+ CL-)'",
+    mm.minimize(input_structure="start.rst7",
+                job_name="min1", steps=2000,
+                restraints="'!(WAT NA+ CL-)'",
                 run_path=path)
 
-    mm.minimize("min1.rst7",
-                "min2",
-                min_steps,
+    mm.minimize(input_structure="min1.rst7",
+                job_name="min2",
+                steps=min_steps,
                 run_path=path)
 
-    mm.heat("min2.rst7",
-            "heat",
-            heat_steps,
-            0.0,
-            temperature)
+    mm.heat(input_structure="min2.rst7",
+            job_name="heat",
+            steps=heat_steps,
+            start_temperature=0.0,
+            end_temperature=temperature)
 
-    mm.constant("heat.rst7",
-                "NVT1",
+    mm.constant(input_structure="heat.rst7",
+                job_name="NVT1",
                 steps=nvt_steps,
                 temperature=temperature,
                 traj_out=int(nvt_steps/100))
 
-    mm.constant("NVT1.rst7",
-                "NPT1",
+    mm.constant(input_structure="NVT1.rst7",
+                job_name="NPT1",
                 steps=npt_steps,
                 temperature=temperature,
                 pressure=pressure,

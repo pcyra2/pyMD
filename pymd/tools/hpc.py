@@ -129,7 +129,7 @@ class HPC:
                            cwd=work_dir, check=True)
             print("INFO: Data synced.")
 
-    def _run_remote_command(self, command: str, error_check: bool = True):
+    def _run_remote_command(self, command: str, error_check: bool = True) -> subprocess.CompletedProcess[str]:
         """
         #TODO
 
@@ -140,11 +140,11 @@ class HPC:
         Returns:
             _type_: _description_
         """
-        return subprocess.run(["ssh", f"{self.username}@{self.login_node}", command],
+        return subprocess.run(args=["ssh", f"{self.username}@{self.login_node}", command],
                        check=error_check, encoding="UTF-8",
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-    def remove_dir(self, hpc_work_dir: str):
+    def remove_dir(self, hpc_work_dir: str) -> None:
         """
         #TODO
 
@@ -152,10 +152,10 @@ class HPC:
             hpc_work_dir (str): _description_
         """
         print(f"INFO: deleting directory in `{hpc_work_dir}` on {self.name}")
-        _ = self._run_remote_command(f"rm -r {hpc_work_dir}")
+        _ = self._run_remote_command(command=f"rm -r {hpc_work_dir}")
 
 
-    def make_dir(self, hpc_work_dir: str):
+    def make_dir(self, hpc_work_dir: str) -> None:
         """
         #TODO
 
@@ -163,7 +163,7 @@ class HPC:
             hpc_work_dir (str): _description_
         """
         print(f"INFO: Making directory `{hpc_work_dir}` on {self.name}")
-        _ = self._run_remote_command(f"mkdir {hpc_work_dir}", error_check=False)
+        _ = self._run_remote_command(command=f"mkdir {hpc_work_dir}", error_check=False)
 
 
     def submit_slurm(self, path: str, file: str) -> int:
@@ -178,7 +178,7 @@ class HPC:
             int: _description_
         """
         print(f"INFO: Submitting slurm job {file} from {path}")
-        output = self._run_remote_command(f"cd {path} ; sbatch {file}")
+        output = self._run_remote_command(command=f"cd {path} ; sbatch {file}")
         stdout = output.stdout
         print(f"INFO: Job ID is {stdout.split()[-1]}")
         return int(stdout.split()[-1])
@@ -194,9 +194,9 @@ class HPC:
         Returns:
             str: _description_
         """
-        output = self._run_remote_command("squeue -u $USER")
+        output = self._run_remote_command(command="squeue -u $USER")
         stdout = output.stdout
-        for line in stdout.rsplit("\n"):
+        for line in stdout.rsplit(sep="\n"):
             segments = line.split()
             if len(segments) > 1:
                 if str(slurm_id) == segments[0]:

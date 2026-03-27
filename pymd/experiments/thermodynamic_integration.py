@@ -31,15 +31,14 @@ class ConfigClass:
                     module_files = ["amber-uon/gcc11.3.0/24", "cuda-12.2.2"],
                     wall_time = 168)
 
-
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def to_dict(self)->dict:
         """Returns a dictionary of the class attributes"""
         return {key:value for key, value in vars(self).items() if not key.startswith('_')}
 
-    def from_dict(self, d: dict):
+    def from_dict(self, d: dict) -> None:
         """
         Initialises config from dictionary.
 
@@ -58,25 +57,25 @@ class ConfigClass:
             assert self.topology_file is not None, "ERR: Equilibrated topology file is required."
 
 
-def main():
+def main() -> None:
     """
     Runs TI.
     """
     config = ConfigClass()
-    if os.path.isfile(config.input_file):
-        c_data = io.json_read(config.input_file)
-        config.from_dict(c_data)
-        io.json_dump(config.to_dict(), config.input_file)
+    if os.path.isfile(path=config.input_file):
+        c_data = io.json_read(path=config.input_file)
+        config.from_dict(d=c_data)
+        io.json_dump(data=config.to_dict(), path=config.input_file)
 
     if config.pre_parameterised is False:
         raise NotImplementedError
 
     md = MDClass(backend="AMBER")
-    md.set_parmfile(config.parm_file) # pyright: ignore[reportArgumentType]
+    md.set_parmfile(parmfile=config.parm_file) # pyright: ignore[reportArgumentType]
     md.define_hardware(cpu = config.cpus, gpu = config.gpus)
 
     if config.pre_equilibrated is False:
-        md = standard_md.initialise_system(md, path="./setup")
+        md = standard_md.initialise_system(mm=md, path="./setup")
         for job in md.jobs:
             # if job.gpu:
             #     partition = "compchemq"

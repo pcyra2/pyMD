@@ -25,7 +25,7 @@ class SlurmJob:
     status: str
     name: str
 
-    def __init__(self, name: str, job_id: int):
+    def __init__(self, name: str, job_id: int) -> None:
         """
         #TODO
 
@@ -36,7 +36,7 @@ class SlurmJob:
         self.name = name
         self.job_id = job_id
 
-    def add_wall_time(self, wall_time: float):
+    def add_wall_time(self, wall_time: float) -> None:
         """
         #TODO
 
@@ -45,7 +45,7 @@ class SlurmJob:
         """
         self.wall_time = wall_time
 
-    def update_status(self, slurm_status: str):
+    def update_status(self, slurm_status: str) -> None:
         """
         #TODO
 
@@ -90,7 +90,7 @@ class Slurm:
     file_name: str = "sub.sh"
 
 
-    def __init__(self,partition:str = "defq"):
+    def __init__(self,partition:str = "defq") -> None:
         """Initializes the job, by first selecting the partition
         
         Args:
@@ -105,7 +105,7 @@ class Slurm:
         return f"{self.name} SLURM JOB on {self.hpc.name} on {self.partition}"
 
 
-    def set_time(self, wall_time:int):
+    def set_time(self, wall_time:int) -> None:
         """Sets the maximum ammount of time for the slurm job. 
 
         Args:
@@ -116,7 +116,7 @@ class Slurm:
         self.wall_time = wall_time
 
 
-    def set_name(self, name:str):
+    def set_name(self, name:str) -> None:
         """Defines the job name
 
         Args:
@@ -125,7 +125,7 @@ class Slurm:
         self.name = name
 
 
-    def set_nodes(self, nodes:int):
+    def set_nodes(self, nodes:int) -> None:
         """Sets the number of nodes to use in the job.
 
         Args:
@@ -136,7 +136,7 @@ class Slurm:
         self.nodes = nodes
 
 
-    def set_mem(self, mem:int):
+    def set_mem(self, mem:int) -> None:
         """Allocates the memory for the job.
 
         Args:
@@ -147,7 +147,7 @@ class Slurm:
         self.mem = mem
 
 
-    def set_gpus(self, gpus:int):
+    def set_gpus(self, gpus:int) -> None:
         """Allocates the number of GPUs for the job
 
         Args:
@@ -158,7 +158,7 @@ class Slurm:
         self.gpus = gpus
 
 
-    def set_modules(self, modules:list[str]):
+    def set_modules(self, modules:list[str]) -> None:
         """Allocates the modules that are required for the job
 
         Args:
@@ -168,7 +168,7 @@ class Slurm:
         self.modules = modules
 
 
-    def set_ntasks(self, tasks:int, per_node:bool = True):
+    def set_ntasks(self, tasks:int, per_node:bool = True) -> None:
         """Allocates the SLURM_NTASKS for the job
 
         Args:
@@ -183,7 +183,7 @@ class Slurm:
         self.tasks_pn = tasks
 
 
-    def set_array(self, array_file:str, length: int|None = None, check:bool = True):
+    def set_array(self, array_file:str, length: int|None = None, check:bool = True) -> None:
         """Enables the use of array jobs
         
         Args:
@@ -193,10 +193,10 @@ class Slurm:
             check (bool): Whether to check if the array file exists. Defaults to True.
             """
         if check:
-            assert os.path.isfile(array_file), f"Array file {array_file} not found."
+            assert os.path.isfile(path=array_file), f"Array file {array_file} not found."
         self.array = True
         if length is None:
-            with open(array_file, "r", encoding="UTF-8") as f:
+            with open(file=array_file, mode="r", encoding="UTF-8") as f:
                 lines = f.readlines()
             self.array_len = len(lines)
         else:
@@ -244,7 +244,7 @@ class Slurm:
 
         return file
 
-    def define_dirs(self, local_file_path: str, hpc_file_path: str):
+    def define_dirs(self, local_file_path: str, hpc_file_path: str) -> None:
         """
         #TODO
 
@@ -257,7 +257,7 @@ class Slurm:
 
     def submit(self,
                wait_for_finish: bool = False,
-               time_ping: int = 60):
+               time_ping: int = 60) -> None:
         """
         #TODO
 
@@ -268,16 +268,16 @@ class Slurm:
         Returns:
             SlurmJob: _description_
         """
-        self.hpc.sync(self.local_file_dir, self.hpc_run_dir, direction="forward")
-        job_id = self.hpc.submit_slurm(self.hpc_run_dir, self.file_name)
-        self.job = SlurmJob(self.name, job_id)
+        self.hpc.sync(work_dir=self.local_file_dir, hpc_work_dir=self.hpc_run_dir, direction="forward")
+        job_id = self.hpc.submit_slurm(path=self.hpc_run_dir, file=self.file_name)
+        self.job = SlurmJob(name=self.name, job_id=job_id)
         if wait_for_finish:
             start = time.perf_counter()
             stop = time.perf_counter()
             finished = False
             while finished is False:
                 time.sleep(time_ping)
-                self.job.update_status(self.hpc.check_slurm_status(job_id))
+                self.job.update_status(slurm_status=self.hpc.check_slurm_status(slurm_id=job_id))
                 print(f"INFO: Job status = {self.job.status}")
                 if self.job.status == "completed":
                     stop = time.perf_counter()

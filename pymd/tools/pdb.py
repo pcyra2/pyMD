@@ -14,7 +14,7 @@ def mutate_residue(
         residue_number: int,
         new_residue: str,
         chain: str = "A"
-        ):
+        ) -> list[str]:
     """Mutates the residue in a PDB file by replacing the original resname with the mutant resname. 
 
     Args:
@@ -27,7 +27,7 @@ def mutate_residue(
 
     assert new_residue in KNOWN_RESIDUES
 
-    for i, line in enumerate(lines):
+    for i, line in enumerate(iterable=lines):
         if line.startswith('ATOM') or line.startswith('HETATM'):
             current_residue_number = int(line[22:26].strip())
             residue_name = line[17:20].strip()

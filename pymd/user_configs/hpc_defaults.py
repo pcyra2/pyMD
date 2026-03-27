@@ -1,8 +1,35 @@
 from pymd.tools import hpc
 
 DEFAULT_HPC = hpc.HPC(name="ada", login_node="hpclogin02.ada.nottingham.ac.uk", username="brara83")
-DEFAULT_HPC.add_partition(hpc.PartitionClass("q4bioq", 96, 8, 1900, 1, 672, "q4bio" ))
-DEFAULT_HPC.add_partition(hpc.PartitionClass("defq", 96, 0, 361, 63, 168))
-DEFAULT_HPC.add_partition(hpc.PartitionClass("ampere-mq", 96, 56, 747, 1, 168))
-DEFAULT_HPC.add_partition(hpc.PartitionClass("ampereq", 96, 8, 747, 3, 168))
-DEFAULT_HPC.add_partition(hpc.PartitionClass("compchemq", 56, 4, 384, 5, 168, "compchem"))
+DEFAULT_HPC.add_partition(partition=hpc.PartitionClass(name="q4bioq",
+                                                       cpus_per_node=96,
+                                                       gpus_per_node=8,
+                                                       mem_per_node=1900,
+                                                       nodes=1,
+                                                       walltime=672,
+                                                       qos="q4bio"))
+DEFAULT_HPC.add_partition(partition=hpc.PartitionClass(name="defq",
+                                                       cpus_per_node=96,
+                                                       gpus_per_node=0,
+                                                       mem_per_node=361,
+                                                       nodes=63,
+                                                       walltime=168))
+DEFAULT_HPC.add_partition(partition=hpc.PartitionClass(name="ampere-mq",
+                                                       cpus_per_node=96,
+                                                       gpus_per_node=56,
+                                                       mem_per_node=747,
+                                                       nodes=1,
+                                                       walltime=168))
+DEFAULT_HPC.add_partition(partition=hpc.PartitionClass(name="ampereq",
+                                                       cpus_per_node=96,
+                                                       gpus_per_node=8,
+                                                       mem_per_node=747,
+                                                       nodes=3,
+                                                       walltime=168))
+DEFAULT_HPC.add_partition(partition=hpc.PartitionClass(name="compchemq",
+                                                       cpus_per_node=56,
+                                                       gpus_per_node=4,
+                                                       mem_per_node=384,
+                                                       nodes=5,
+                                                       walltime=168,
+                                                       qos="compchem"))

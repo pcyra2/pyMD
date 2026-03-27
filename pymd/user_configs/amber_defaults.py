@@ -70,35 +70,16 @@ class AmberConfig:
     _param_file: str
     _input_coord_file: str
 
-    ## Thermodynamic Integration config
-    icfe: int = 0 # whether to do a free energy calculation. 0 = No, 1 = Yes
-    clambda: float # Value of Lambda
-    timask1: str # Selects the atoms unique in system 1
-    timask2: str # Selects the atoms unique in system 2
 
-    ## Soft Core config
-    ifsc: int = 0 # Whether to use soft core potentials. 0 = No, 1 = Yes
-    scalpha: float = 0.5 # Alpha parameter. Defaults to 0.5
-    scbeta: float = 12 # The Beta parameter for SoftCore. Defaults to 12
-    logdvdl: int = 0 # dumps dv/dlam at the end for processing
-    scmask1: str # The mask for soft core atoms in system 1
-    scmask2: str # The mask for soft core atoms in system 2
-
-    ## MBAR config
-    ifmbar: int = 0 # Whether to generate MBAR outputs. 0 = No, 1 = Yes
-    mbar_states: int # The  total number of Lambda windows
-    mbar_lambda: str # A list of comma sepparated floats defining the lambda windows
-        # e.g. `0.0, 0.2, 0.4, 0.6, 0.8, 1.0,`
-
-    def __init__(self):
-        if os.path.isfile(self.CPUPath) is False:
+    def __init__(self) -> None:
+        if os.path.isfile(path=self.CPUPath) is False:
             print("WARNING: AMBER CPU path not found, please fix this to use amber CPU")
             print(self.CPUPath)
-        if os.path.isfile(self.GPUPath) is False:
+        if os.path.isfile(path=self.GPUPath) is False:
             print("WARNING: AMBER GPU path not found, please fix this to use amber CPU")
             print(self.GPUPath)
 
-    def set_timestep(self, timestep: float):
+    def set_timestep(self, timestep: float) -> None:
         """
 
         This method sets the time step for the simulation.
@@ -118,7 +99,7 @@ class AmberConfig:
         assert timestep > 0, f"ERROR: Cannot have a negative timestep: {timestep} not allowed"
         self.dt = timestep
 
-    def set_minimisation(self, steps_total: int, steps_steepest: int|None = None):
+    def set_minimisation(self, steps_total: int, steps_steepest: int|None = None) -> None:
         """Changes the configuration to run a minimisation rather than a dynamics simulation
 
         Args:
@@ -136,7 +117,7 @@ class AmberConfig:
         self.ncyc = steps_steepest
         self.maxcyc = steps_total
 
-    def set_dynamics(self, timestep:float = 0.002, shake: int = 1, timestep_units: str = "ps"):
+    def set_dynamics(self, timestep:float = 0.002, shake: int = 1, timestep_units: str = "ps") -> None:
         """Changes the configuration to run a dynamics simulation
         
         Args:
@@ -146,12 +127,12 @@ class AmberConfig:
         """
         self.imin = 0
         self._minimisation = False
-        self._update_timestep(timestep, timestep_units)
+        self._update_timestep(timestep=timestep, timestep_units=timestep_units)
         self.nct = shake
         if self._check_timestep_compatibility() is False:
             self.nct = 2
 
-    def _check_timestep_compatibility(self)->bool:
+    def _check_timestep_compatibility(self) -> bool:
         """Checks that the timestep and the shake are compatible with each other
 
         Returns:
@@ -164,15 +145,15 @@ class AmberConfig:
         else:
             return False
 
-    def _update_timestep(self, timestep: float = 0.002, timestep_units: str = "ps"):
-
-        self.dt = convert.time(timestep, timestep_units, "ps")
+    def _update_timestep(self, timestep: float = 0.002, timestep_units: str = "ps") -> None:
+        
+        self.dt = convert.time(in_time=timestep, in_unit=timestep_units, out_unit="ps")
 
     def to_dict(self)->dict:
         """Returns a dictionary of the class attributes"""
         return {key:value for key, value in vars(self).items() if not key.startswith('_')}
-
-    def set_outputs(self, energy: int, restart: int, trajectory: int):
+    
+    def set_outputs(self, energy: int, restart: int, trajectory: int) -> None:
         """Sets the output frequencies for the calculation. 
 
         Args:
@@ -184,7 +165,7 @@ class AmberConfig:
         self.ntwr = restart
         self.ntwx = trajectory
 
-    def set_restraints(self, restraint_mask: str|None, restraint_wt: float):
+    def set_restraints(self, restraint_mask: str|None, restraint_wt: float) -> None:
         """
         Allows for simple restraints using ambers selection algebra
 
@@ -211,7 +192,7 @@ class AmberConfig:
                 # del self.restraint_wt
                 pass
 
-    def set_temperature(self, temperature: float):
+    def set_temperature(self, temperature: float) -> None:
         """Sets the temperature for the simulation
 
         Args:
@@ -221,7 +202,7 @@ class AmberConfig:
             + "allowed"
         self.set_heating(start_temp=temperature, end_temp=temperature, nsteps=1)
 
-    def set_heating(self, start_temp: float = 0.0, end_temp: float = 300.0, nsteps: int = 1):
+    def set_heating(self, start_temp: float = 0.0, end_temp: float = 300.0, nsteps: int = 1) -> None:
         """Sets the configuration to run a heating simulation
         
         Args:
@@ -230,12 +211,12 @@ class AmberConfig:
             nsteps (int, optional): Number of steps to heat for. Defaults to 1.
         """
         if "ntt" not in self.to_dict().keys():
-            self.set_thermostat(self.ntt)
+            self.set_thermostat(thermostat=self.ntt)
         self.temp0 = end_temp
         self.tempi = start_temp
         self._heating_steps = nsteps
-
-    def restart_dynamics(self, restart: bool|int = True):
+        
+    def restart_dynamics(self, restart: bool|int = True) -> None:
         """Sets whether to restart the dynamics simulation or not
 
         Args:
@@ -257,7 +238,7 @@ class AmberConfig:
             self.irest = 0
             self.ntx = 1
 
-    def set_thermostat(self, thermostat: int|str):
+    def set_thermostat(self, thermostat: int|str) -> None:
         """Sets the thermostat for the simulation.
 
         Args:
@@ -277,7 +258,7 @@ class AmberConfig:
                                 + f"thermostats are: {list(THERMOSTATS.values())}")
         self.ntt = thermostat
 
-    def set_pressure_scaling(self, pressure_scaling: int|str):
+    def set_pressure_scaling(self, pressure_scaling: int|str) -> None:
         """Sets the pressure scaling for the simulation
 
         Args:
@@ -298,7 +279,7 @@ class AmberConfig:
         assert isinstance(pressure_scaling_int, int), "Pressure scaling should be an int."
         self.ntp = pressure_scaling_int
 
-    def set_ensemble(self, ensemble: str):
+    def set_ensemble(self, ensemble: str) -> None:
         """
         Initialise an ensemble for the simulation. Allowed ensembles are: min, heat, nvt, npt
 
@@ -322,7 +303,7 @@ class AmberConfig:
             ensemble_int = 2
         self.ntb = ensemble_int
 
-    def set_barostat(self, barostat: int|str):
+    def set_barostat(self, barostat: int|str) -> None:
         """Sets the barostat for the simulation
 
         Args:
@@ -332,17 +313,17 @@ class AmberConfig:
         barostat_int = self.barostat
         if isinstance(barostat, str):
             barostat_int = BAROSTATS.get(barostat.casefold())
-            if barostat_int is None:
-                raise ValueError(f"Barostat {barostat} not recognised, known barostats are:" \
-                                + f" {list(BAROSTATS.keys())}")
+            if barostat is None:
+                raise ValueError(f"Barostat {barostat} not recognised, known barostats are: {list(BAROSTATS.keys())}")
         elif isinstance(barostat, int):
-            if barostat not in BAROSTATS.values():
-                raise ValueError(f"Barostat {barostat} not recognised, known barostats are:" \
-                                + f" {list(BAROSTATS.values())}")
             barostat_int = barostat
+            if barostat_int not in BAROSTATS.values():
+                raise ValueError(f"Barostat {barostat} not recognised, known barostats are: {list(BAROSTATS.values())}")
+        else:
+            raise ValueError(f"Barostat {barostat} not recognised.")
         self.barostat = barostat_int
 
-    def set_pressure(self, pressure: float):
+    def set_pressure(self, pressure: float) -> None:
         """Sets the pressure for the simulation
 
         Args:
@@ -350,12 +331,12 @@ class AmberConfig:
         """
         assert pressure >= 0, f"ERROR: Cannot have a negative pressure, {pressure} not allowed"
         if "barostat" not in self.to_dict().keys():
-            self.set_barostat(self.barostat)
+            self.set_barostat(barostat=self.barostat)
         if "ntp" not in self.to_dict().keys():
-            self.set_pressure_scaling(self.ntp)
+            self.set_pressure_scaling(pressure_scaling=self.ntp)
         self.pres0 = pressure
 
-    def gen_input_file(self, filename: str):
+    def gen_input_file(self, filename: str) -> list[str]:
         """Generates an AMBER input file from the current configuration
 
         Args:
@@ -379,11 +360,7 @@ class AmberConfig:
 """
         return [header] + body + [footer]
 
-    def set_calculation_variables(self,
-            paramfile: str,
-            input_coordinates: str,
-            input_file_name: str,
-            output_file_name: str):
+    def set_calculation_variables(self, paramfile: str, input_coordinates: str, input_file_name: str, output_file_name: str) -> None:
         """Sets some basic calculation information
 
         Args:
