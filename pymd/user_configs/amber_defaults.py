@@ -179,12 +179,13 @@ class AmberConfig:
         # e.g. `0.0, 0.2, 0.4, 0.6, 0.8, 1.0,`
 
     def __init__(self) -> None:
-        if os.path.isfile(path=self._CPUPath) is False:
-            print("WARNING: AMBER CPU path not found, please fix this to use amber CPU")
-            print(self._CPUPath)
-        if os.path.isfile(path=self._GPUPath) is False:
-            print("WARNING: AMBER GPU path not found, please fix this to use amber CPU")
-            print(self._GPUPath)
+        # if os.path.isfile(path=self._CPUPath) is False:
+        #     print("WARNING: AMBER CPU path not found, please fix this to use amber CPU")
+        #     print(self._CPUPath)
+        # if os.path.isfile(path=self._GPUPath) is False:
+        #     print("WARNING: AMBER GPU path not found, please fix this to use amber CPU")
+        #     print(self._GPUPath)  
+        pass
 
     def set_timestep(self, timestep: float) -> None:
         """
