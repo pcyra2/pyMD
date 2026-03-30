@@ -10,14 +10,16 @@ import pymd.tools.io as io
 KNOWN_FORCEFIELDS = dict(ff14SB = dict(phosaa = "phosaa14SB",
                                     water = "TIP3P",
                                     waterff = "leaprc.water.tip3p",
-                                    waterfix = ""),
+                                    waterfix = ""
+                                    ),
                         ff19SB = dict(phosaa = "phosaa19SB",
                                     water = "OPC",
                                     waterff = "leaprc.water.opc",
-                                    waterfix = "set default FlexibleWater on")
+                                    waterfix = ""
+                                    ) # Potentially need the water fix
                                     )
 
-def gen_leap(lig_code:str,
+def gen_leap(ligand_name:str,
             pdb_file:str,
             parm_file: str = "complex.parm7",
             amber_coor: str = "complex.rst7",
@@ -32,8 +34,8 @@ def gen_leap(lig_code:str,
 source leaprc.{KNOWN_FORCEFIELDS[forcefield]["phosaa"]}
 source {KNOWN_FORCEFIELDS[forcefield]["waterff"]}
 
-lig = loadmol2 {lig_code}_ac.mol2
-loadamberparams {lig_code}_ac.frcmod
+lig = loadmol2 {ligand_name}.mol2
+loadamberparams {ligand_name}.frcmod
 check lig
 
 prot = loadpdb {pdb_file}
@@ -49,14 +51,14 @@ saveamberparm complex {parm_file} {amber_coor}
 quit"""
     return file
 
-def run_leap(path: str) -> None:
+def run_leap(path: str, file: str = "leap.in") -> None:
     """
     Runs tleap on the leap.in file
 
     Args:
         path (str): location of the leap.in file
     """
-    log = subprocess.run(args=["tleap", "-f", "leap.in"], cwd = path,
+    log = subprocess.run(args=["tleap", "-f", file], cwd = path,
                             text = True, capture_output = True, check=True)
     io.text_dump(text=log.stdout, path=os.path.join(path, "leap.log"))
 
