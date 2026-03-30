@@ -1,3 +1,7 @@
+"""
+#TODO
+"""
+
 import os
 
 import pymd.tools.convert as convert
@@ -13,24 +17,28 @@ def initialise_system(mm: MDClass,
         path: str="./",
         execute:bool = False) -> MDClass:
     """
-    
+    Runs a standard MD protocol. This starts with a solvation minimisation, followed by a 
+    full system minimisation. Then the system is heated for 90% of the heating time, followed by NVT 
+    equilibration. Then an additional NVT and NPT equilibration. 
 
     Args:
-        mm (MDClass): _description_
-        min_steps (int, optional): _description_. Defaults to 10000.
-        heat_steps (int, optional): _description_. 
+        mm (MDClass): The MDClass object that contains the system information.
+        min_steps (int, optional): The number of steps to minimize the complete system. 
+            An additional 2000 steps are performs on the solvent ONLY. Defaults to 10000.
+        heat_steps (int, optional): The number of steps to heat the system for. The timestep will be 2 fs. 
             Defaults to convert.time_to_steps(20, "ps", 0.002).
-        nvt_steps (int, optional): _description_. 
+        nvt_steps (int, optional): The number of steps for the NVT equilibration. 
             Defaults to convert.time_to_steps(100, "ps", 0.002).
-        npt_steps (int, optional): _description_. 
+        npt_steps (int, optional): The number of steps for the NPT equilibration. 
             Defaults to convert.time_to_steps(10, "ns", 0.002).
-        temperature (float, optional): _description_. Defaults to 300.0.
-        pressure (float, optional): _description_. Defaults to 1.0.
-        path (str, optional): _description_. Defaults to "./".
-        execute (bool, optional): _description_. Defaults to False.
+        temperature (float, optional): The temperature to run the simulations at (post heating). 
+            Defaults to 300.0.
+        pressure (float, optional): The pressure to run the NPT enseble at. Defaults to 1.0.
+        path (str, optional): The path to run the simulations. Defaults to "./".
+        execute (bool, optional): Whether to run the simulation after generating. Defaults to False.
 
     Returns:
-        MDClass: _description_
+        MDClass: The MD Class object with the jobs generated.
     """
     assert os.path.exists(path=path), f"Path {path} does not exist"
 

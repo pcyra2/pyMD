@@ -1,6 +1,10 @@
-"""#TODO
+"""Allows for easier convertion of time throughout the codebase. Can convert between time and 
+steps and vice versa.
 """
 
+from dataclasses import dataclass
+
+@dataclass
 class TimeClass:
     """Time class. Used for quick convertion of time units
     
@@ -12,7 +16,7 @@ class TimeClass:
     name: str
     short_hand: str
     relative_value: float
-    def __init__(self, name: str, short_hand: str, relative_value: float):
+    def __init__(self, name: str, short_hand: str, relative_value: float) -> None:
         """Initialises the timeClass
     
         Args:
@@ -32,7 +36,7 @@ TIME_UNITS = [TimeClass(name="seconds", short_hand="s", relative_value=1.0),
         TimeClass(name="picoseconds", short_hand="ps", relative_value=1e-12),
         TimeClass(name="femtoseconds", short_hand="fs", relative_value=1e-15)]
 
-def get_time(unit:str)->TimeClass:
+def get_time(unit:str) -> TimeClass:
     """Used as a helper function to find the timeClass object.
     
     Args:
@@ -53,7 +57,7 @@ def get_time(unit:str)->TimeClass:
 def time(
         in_time: float = 1,
         in_unit: str = "s",
-        out_unit: str = "s")->float:
+        out_unit: str = "s") -> float:
     """Converts units of time
 
     Args:

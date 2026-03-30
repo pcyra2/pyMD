@@ -2,7 +2,9 @@
 """
 import os
 import subprocess
+from dataclasses import dataclass
 
+@dataclass
 class PartitionClass:
     """
     Defines the default data for a HPC SLURM partition.

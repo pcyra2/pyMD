@@ -115,11 +115,11 @@ class MDJobClass:
             self.hpc = hpc
 
         if self.gpu:
-            if os.path.isfile(path=self.kernel.config.GPUPath) is False:
-                assert os.path.isfile(path=self.kernel.config.CPUPath)
+            if os.path.isfile(path=self.kernel.config._GPUPath) is False:
+                assert os.path.isfile(path=self.kernel.config._CPUPath)
                 self.to_cpu()
         else:
-            assert os.path.isfile(path=self.kernel.config.CPUPath)
+            assert os.path.isfile(path=self.kernel.config._CPUPath)
 
         self.run_line = self.kernel._gen_runlines(
                             input_file_name=self.inputfile_name,

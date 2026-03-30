@@ -19,5 +19,5 @@ def test_mutate() -> None:
 
 def test_get_reidues()->None:
     original_pdb = io.text_read(path=os.path.join(file_loc, "1N23.pdb"))
-    id = pdb.get_protein_res_id_range(lines=original_pdb)
-    assert id == 598
+    temp_id = pdb.get_protein_res_id_range(lines=original_pdb)
+    assert temp_id == 598

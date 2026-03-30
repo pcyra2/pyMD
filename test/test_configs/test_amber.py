@@ -8,7 +8,7 @@ from pymd.md.kernels.amber import Amber
 def test_paths():
     config = AmberConfig()
 
-    assert os.path.isfile(str(config.CPUPath)), "CPU version of amber is not found"
+    assert os.path.isfile(str(config._CPUPath)), "CPU version of amber is not found"
 
 def test_minimisation_toggle():
     config = AmberConfig()

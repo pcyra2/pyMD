@@ -24,7 +24,7 @@ def gen_leap(lig_code:str,
             forcefield: str = "ff14SB",
             box: float = 12.0
             ) -> str:
-    """#TODO
+    """
     """
     assert forcefield in KNOWN_FORCEFIELDS.keys(), f"ERROR: Forcefield {forcefield} unknown"
 

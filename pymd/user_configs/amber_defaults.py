@@ -5,11 +5,99 @@ import pymd.tools.convert as convert
 
 
 class AmberConfig:
+    """Contains information an AMBER input job. It allows for settings up 
+    default variables.
+
+    Attributes:
+        # User defined variables:
+
+        ## Software paths
+        _GPUPath (str): Path to the GPU executable
+        _CPUPath (str): Path to the CPU executable
+
+        ## IO options
+
+        ntpr (int): Frequency to write mdout energy
+        ntwx (int): Frequency to write to mdcrd trajectory file
+        ntwr (int): Frequency to update the restart file
+        ioutfm (int): Writes netCDF trajectories as binary
+        iwrap (int): Wraps the trajectories into the "primary box"
+
+        ## Minimisation options
+        maxcyc (int): Maximum number of minimisation steps
+        imin (int): Whether to run minimization or dynamics simulation
+        ncyc (int): When to swap from steepest-descent to conjugate gradient minimisation
+        ntmin (int): Type of minimisation to perform
+
+        ## Simulation options
+
+        irest (int): Whether to restart the simulation, 0 = new simulation, 1 = continue simulation
+        cut (float): Non-bonded cutoff distance (Angstrom)
+        ntx (int): Whether to read coordinates and velocities from the restart file, 1 = no, 5 = yes
+
+        ## Dynamics options
+        dt (float): Dynamics time step in picoseconds
+        nstlim (int): Number of Molecular dynamics steps to perform
+        ig (int): Initial seed. -1 is random
+
+
+        ## Retraints and potentials
+        nct (int): Shake setting, 1 = No shake, 2 = X-H bonds, 3 = all bonds
+        ntf (int): Force evolution, 1=all forces, 2=all except H (NTC=2), 3=None (NTC=3)
+        jfastw (int): Fast water setting for shake, set to 4 if not desired
+        dielec (float): Dielectric constant for electrostatic interactions.
+        ntr (int): Toggles restraint_mask and restraint_wt
+        restraintmask (str): Restrain all atoms except for solvent & counter atoms
+        restraint_wt (float):  Restrain with 5 kcal#mol potential
+        nmropt (int): NMR weights to be read
+
+        ## Ensemble Settings
+        ntb (int): PBC control. 0=No periodicity, 1=constant volume, 2=constant pressure
+
+        ## Temperature Settings
+        ntt (int): Temperature scaling, 2=anderson, 3=Langevin, 9=Nose-Hoover, 11=Berendsen
+        temp0 (float): Final temperature of the simulation
+        tempi (float): Initial temperature of the simulation
+        gamma_ln (float): Collision frequency
+
+        ## Pressure Settings
+        ntp (int): Pressure scaling, 1=isotropic (Recommended), 2=anisotropic, 3=semiisotropic, 
+            4=targeted volume
+        barostat (int): Barostat, 1=Berendsen, 2=MonteCarlo
+        pres0 (float): Reference pressure (bar)
+
+        # Internal variables.
+
+        _minimisation (bool): Whether the calculation is minimisation or not.
+        _initialised (bool): Whether the calculation is initialised
+        _heating_steps (int): Number of heating steps for the simulation
+        _input_file_name (str): Name of the inputfile
+        _output_file_name (str): Name of the output file
+        _param_file (str): Name of the parameter file
+        _input_coord_file (str): Name of the input coordinates.
+
+        ## Thermodynamic Integration config
+        icfe (int): Whether to do a free energy calculation. 0 = No, 1 = Yes
+        clambda (float): Value of Lambda
+        timask1 (str): Selects the atoms unique in system 1
+        timask2 (str): Selects the atoms unique in system 2
+
+        ## Soft Core config
+        ifsc (int): Whether to use soft core potentials. 0 = No, 1 = Yes
+        scalpha (float): Alpha parameter. Defaults to 0.5
+        scbeta (float): The Beta parameter for SoftCore. Defaults to 12
+        logdvdl (int): dumps dv/dlam at the end for processing
+        scmask1 (str): The mask for soft core atoms in system 1
+        scmask2 (str): The mask for soft core atoms in system 2
+
+        ## MBAR config
+        ifmbar (int): Whether to generate MBAR outputs. 0 = No, 1 = Yes
+        mbar_states (int): The  total number of Lambda windows
+        mbar_lambda (str): A list of comma sepparated floats defining the lambda windows
+            e.g. `0.0, 0.2, 0.4, 0.6, 0.8, 1.0,`
     """
-    _summary_
-    """
-    GPUPath: str = "" # Path to the GPU binary of AMBER
-    CPUPath: str = "" # Path to the CPU binary of AMBER
+    _GPUPath: str = "" # Path to the GPU binary of AMBER
+    _CPUPath: str = "" # Path to the CPU binary of AMBER
 
     ## IO options
     ntpr: int = 100 # Frequency to write mdout energy
@@ -91,12 +179,12 @@ class AmberConfig:
         # e.g. `0.0, 0.2, 0.4, 0.6, 0.8, 1.0,`
 
     def __init__(self) -> None:
-        if os.path.isfile(path=self.CPUPath) is False:
+        if os.path.isfile(path=self._CPUPath) is False:
             print("WARNING: AMBER CPU path not found, please fix this to use amber CPU")
-            print(self.CPUPath)
-        if os.path.isfile(path=self.GPUPath) is False:
+            print(self._CPUPath)
+        if os.path.isfile(path=self._GPUPath) is False:
             print("WARNING: AMBER GPU path not found, please fix this to use amber CPU")
-            print(self.GPUPath)
+            print(self._GPUPath)
 
     def set_timestep(self, timestep: float) -> None:
         """
@@ -333,7 +421,7 @@ class AmberConfig:
         barostat_int = self.barostat
         if isinstance(barostat, str):
             barostat_int = BAROSTATS.get(barostat.casefold())
-            if barostat is None:
+            if barostat_int is None:
                 raise ValueError(f"Barostat {barostat} not recognised, known barostats are: {list(BAROSTATS.keys())}")
         elif isinstance(barostat, int):
             barostat_int = barostat
