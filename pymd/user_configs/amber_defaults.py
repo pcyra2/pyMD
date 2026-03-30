@@ -513,6 +513,8 @@ class AmberConfig:
         self.scbeta = self.scbeta
         self.logdvdl = self.logdvdl
 
+        # set vlim=20 in the first heaing step?
+
         if mbar:
             self.ifmbar = 1
             self.mbar_states = len(lambda_list)
