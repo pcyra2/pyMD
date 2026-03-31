@@ -6,6 +6,7 @@ import os
 import copy
 
 from pymd.user_configs.amber_defaults import AmberConfig
+from pymd.tools import io
 
 
 class Amber:
@@ -41,11 +42,11 @@ class Amber:
         if output_file_name is None:
             output_file_name = input_file_name
         if gpu:
-            return f"pmemd.cuda -O -i {input_file_name}.in -c {input_structure_name} -r " \
+            return f"pmemd.cuda -O -i {input_file_name}.in -p {self.parm_file} -c {input_structure_name} -ref {input_structure_name} -r " \
                 + f"{self.parm_file} -o {output_file_name}.out -r {output_file_name}.rst7" \
                 +f" -x {output_file_name}.nc"
         else:
-            return f"sander -O -i {input_file_name}.in -c {input_structure_name} -r " \
+            return f"sander -O -i {input_file_name}.in -p {self.parm_file} -c {input_structure_name} -ref {input_structure_name} -r " \
                 + f"{self.parm_file} -o {output_file_name}.out -r {output_file_name}.rst7" \
                 + f" -x {output_file_name}.nc"
 
@@ -69,9 +70,7 @@ class Amber:
             outlines (str): The CLI output from runnning the command.
         """
         inputfile = self.config.gen_input_file(filename = input_file_name)
-        if os.path.isfile(path = os.path.join(path, input_file_name)) is False:
-            with open(file = os.path.join(path, input_file_name), mode = "w", encoding = "UTF-8") as f:
-                f.writelines(inputfile)
+        io.text_dump(inputfile, os.path.join(path, f"{input_file_name}.in"))
 
         assert os.path.isfile(path = os.path.join(path, input_structure_name)), \
             f"Input structure file is not found: {input_structure_name}"
@@ -81,10 +80,10 @@ class Amber:
                             output_file_name = output_file_name,
                             gpu = gpu)
 
-        print(f"INFO: Running command: {command}")
-        with open(file = f"{output_file_name}.out", mode = "w", encoding="UTF-8") as f:
-            outlines = subprocess.run(args = [command],stdout=f, cwd=path, check=True)
-        return outlines
+        print(f"INFO: Running command: {command} in {path}")
+
+        output = subprocess.run(args = command.split(), cwd=path, check=True)
+        return output
 
     def set_global(
             self,

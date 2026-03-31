@@ -68,6 +68,7 @@ def json_read(path: str)->dict:
         text (dict): The function `jsonRead` reads a JSON file located at the specified `path`
         and returns the contents of the file as a Python dictionary.
     """
+    
     with open(file=path, mode="r", encoding="UTF-8") as f:
         text = json.load(fp=f, object_hook=parse_float_keys)
         f.close()

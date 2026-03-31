@@ -3,12 +3,15 @@ This script should automatically run thermodynamic integration.
 """
 from  dataclasses import dataclass
 import os
+from posixpath import isfile
 import shutil
+from pprint import pprint
 
 from pymd.md.recipies import thermodynamic_integration as TI
 from pymd.md.recipies import standard_md
-from pymd.md.utilities import leap
-from pymd.tools import io
+from pymd.md.utilities import cpptraj, leap
+from pymd.tools import io, pdb
+from pymd.tools.status_tracker import StatusTracker
 from pymd.md.md import MDClass
 from pymd.tools.slurm import Slurm
 
@@ -32,10 +35,11 @@ class ConfigClass:
 
     """
     input_file: str = "Job.conf"
+    status_file: str = "./status.json"
     input_data_dir: str = "./input_data"
     run_dir: str = "./"
-    base_protein: str = ""
-    base_ligand: str = ""
+    protein_pdb: str = "Protein.pdb"
+    ligand_mol2: str = "Ligand.mol2"
     mutation: str = ""
     mutation_resid: int = 0
     forcefield: str = "ff19SB"
@@ -50,8 +54,8 @@ class ConfigClass:
         self.input_file = self.input_file
         self.input_data_dir = self.input_data_dir
         self.run_dir = self.run_dir
-        self.base_protein = self.base_protein
-        self.base_ligand = self.base_ligand
+        self.protein_pdb = self.protein_pdb
+        self.ligand_mol2 = self.ligand_mol2
         self.mutation = self.mutation
         self.mutation_resid = self.mutation_resid
         self.forcefield = self.forcefield
@@ -84,24 +88,68 @@ def main() -> None:
     if os.path.isfile(path=config.input_file):
         c_data = io.json_read(path=config.input_file)
         config.from_dict(d=c_data)
-    io.json_dump(data=config.to_dict(), path=config.input_file)
+    # io.json_dump(data=config.to_dict(), path=config.input_file)
 
     assert os.path.isdir(config.input_data_dir)
+    STATUS = StatusTracker(file_path =  config.status_file)
+    if os.path.isfile(path=config.status_file):
+        print(f"INFO: Reading job status from {config.status_file}")
+        STATUS.from_dict()
+
+    if hasattr(STATUS, "setup") is False:
+        STATUS.add_stage(stage="setup", steps=["data manipulation",
+                                    "leap", 
+                                    "minimize1", 
+                                    "minimize2",
+                                    "heat", 
+                                    "nvt",
+                                    "npt"])
+
+
     ## Setup the system
     setup_path = os.path.join(config.run_dir, "setup")
     io.make_dir(path=setup_path)
 
-    shutil.copy(os.path.join(config.input_data_dir, config.base_protein), 
-                os.path.join(setup_path, config.base_protein))
-    shutil.copy(os.path.join(config.input_data_dir, config.base_ligand), 
-                os.path.join(setup_path, config.base_ligand))
-    shutil.copy(os.path.join(config.input_data_dir, config.base_ligand.replace("mol2", "frcmod")), 
-                os.path.join(setup_path, config.base_ligand.replace("mol2", "frcmod")))
+    shutil.copy(os.path.join(config.input_data_dir, config.protein_pdb), 
+                os.path.join(setup_path, config.protein_pdb))
+    shutil.copy(os.path.join(config.input_data_dir, config.ligand_mol2), 
+                os.path.join(setup_path, config.ligand_mol2))
+    shutil.copy(os.path.join(config.input_data_dir, config.ligand_mol2.replace("mol2", "frcmod")), 
+                os.path.join(setup_path, config.ligand_mol2.replace("mol2", "frcmod")))
     
-    leap_in = leap.gen_leap(ligand_name="Ligand", pdb_file="Protein", forcefield=config.forcefield)
+    STATUS.update_step(stage="setup", step="data manipulation", status="complete")
 
-    io.text_dump(text=leap_in, path=os.path.join(setup_path, "leap.in"))
-    leap.run_leap(path=setup_path)
+    if STATUS.setup.leap != "complete":
+        print("INFO: Running initial leap step")
+        leap_in = leap.gen_leap(ligand_name=config.ligand_mol2.replace(".mol2",""), pdb_file=config.protein_pdb, forcefield=config.forcefield, water="TIP3P")
+
+        io.text_dump(text=leap_in, path=os.path.join(setup_path, "leap.in"))
+        leap.run_leap(path=setup_path)
+        STATUS.update_step("setup", "leap", "run")
+        tmp = leap.check_leap_log(path=setup_path)
+        if tmp is True:
+            STATUS.update_step("setup", "leap", "complete")
+        else: 
+            STATUS.update_step("setup", "leap", "error")
+    
+    protein_max_resid: int = pdb.get_protein_res_id_range(io.text_read(os.path.join(setup_path, "complex.pdb")))
+    
+    md = MDClass(backend="AMBER")
+    md.set_parmfile(parmfile="complex.parm7")
+    md.define_hardware(cpu = config.cpus, gpu = config.gpus)
+    if STATUS.setup.minimize1 != "complete":
+        md.minimize(input_structure="complex.rst7", 
+                    job_name="min1",
+                    steps=10000,
+                    restraints=f"':1-{protein_max_resid}'",
+                    run_path=setup_path,
+                    steps_steepest=5000,
+                    traj_out=0, 
+                    restart_out=500,
+                    energy_out=10
+                    )
+        md.jobs[-1].exe()
+        STATUS.update_step(stage="setup", step="minimize1", status="complete")
 
 
     # if config.pre_parameterised is False:

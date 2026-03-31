@@ -7,33 +7,51 @@ import subprocess
 import os
 import pymd.tools.io as io
 
-KNOWN_FORCEFIELDS = dict(ff14SB = dict(phosaa = "phosaa14SB",
+KNOWN_FORCEFIELDS: dict[str, dict[str, str]] = dict(ff14SB = dict(phosaa = "phosaa14SB",
                                     water = "TIP3P",
-                                    waterff = "leaprc.water.tip3p",
-                                    waterfix = ""
                                     ),
                         ff19SB = dict(phosaa = "phosaa19SB",
                                     water = "OPC",
-                                    waterff = "leaprc.water.opc",
-                                    waterfix = ""
                                     ) # Potentially need the water fix
                                     )
+PARAMETER_FILES: dict[str, str] = dict(
+    ff14SB = "leaprc.protein.ff14SB",
+    ff19SB = "leaprc.protein.ff19SB",
+    TIP3P = "leaprc.water.tip3p",
+    TIP4P = "leaprc.water.tip4p",
+    OPC = "leaprc.water.opc",
+    phosaa14SB = "leaprc.phosaa14SB",
+    phosaa19SB = "leaprc.phosaa19SB",
+    gaff = "leaprc.gaff",
+    gaff2 = "leaprc.gaff2")
 
 def gen_leap(ligand_name:str,
             pdb_file:str,
             parm_file: str = "complex.parm7",
             amber_coor: str = "complex.rst7",
             forcefield: str = "ff14SB",
-            box: float = 12.0
+            gaff: None|str = "gaff",
+            water: None|str = "tip3p",
+            box: float = 12.0,
+            extra_parms: list[str] = []
             ) -> str:
     """
     """
-    assert forcefield in KNOWN_FORCEFIELDS.keys(), f"ERROR: Forcefield {forcefield} unknown"
 
-    file = f"""source leaprc.protein.{forcefield}
-source leaprc.{KNOWN_FORCEFIELDS[forcefield]["phosaa"]}
-source {KNOWN_FORCEFIELDS[forcefield]["waterff"]}
+    assert forcefield in KNOWN_FORCEFIELDS.keys()
+    file = f"source {PARAMETER_FILES[forcefield]}\n"
 
+    if water is None:
+        water = KNOWN_FORCEFIELDS[forcefield]["water"]
+    file += f"source {PARAMETER_FILES[water]}\n"
+
+    if gaff is not None:
+        file += f"source {PARAMETER_FILES[gaff]}\n"
+
+    for parm in extra_parms:
+        file += f"source {PARAMETER_FILES[parm]}\n"
+
+    file += f"""
 lig = loadmol2 {ligand_name}.mol2
 loadamberparams {ligand_name}.frcmod
 check lig
@@ -41,10 +59,8 @@ check lig
 prot = loadpdb {pdb_file}
 check prot
 
-{KNOWN_FORCEFIELDS[forcefield]["waterfix"]}
-
 complex = combine {"{"} prot lig {"}"}
-solvateOct complex {KNOWN_FORCEFIELDS[forcefield]["water"]}BOX {box}
+solvateOct complex {water}BOX {box}
 addions complex Na+ 0
 savepdb complex complex.pdb
 saveamberparm complex {parm_file} {amber_coor}
@@ -129,3 +145,17 @@ saveamberparm protein {protein_out}.parm7 {protein_out}.rst7
 
 quit"""
     return file
+
+def check_leap_log(path: str, file: str = "leap.log"):
+    if os.path.isfile(path=os.path.join(path, file)) is False:
+        return False
+    logfile = io.text_read(path=os.path.join(path, file))
+    final_line = logfile[-1]
+    if final_line.startswith(f"Exiting LEaP:") is False:
+        return False
+    dat = final_line.split()
+    errs = int(dat[4].replace(";",""))
+    if errs > 0:
+        print(f"ERROR: Number of errors in leap file is {errs}")
+        return False
+    return True
