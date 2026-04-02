@@ -8,7 +8,7 @@ import shutil
 from pprint import pprint
 
 from pymd.md.recipies import thermodynamic_integration as TI
-from pymd.md.recipies import standard_md
+from pymd.md.recipies import standard_md, custom_recipies
 from pymd.md.utilities import cpptraj, leap
 from pymd.tools import io, pdb
 from pymd.tools.status_tracker import StatusTracker
@@ -99,11 +99,13 @@ def main() -> None:
     if hasattr(STATUS, "setup") is False:
         STATUS.add_stage(stage="setup", steps=["data manipulation",
                                     "leap", 
-                                    "minimize1", 
-                                    "minimize2",
+                                    "min1", 
+                                    "min2",
                                     "heat", 
                                     "nvt",
-                                    "npt"])
+                                    "npt1",
+                                    "npt2",
+                                    "npt3"])
 
 
     ## Setup the system
@@ -132,51 +134,44 @@ def main() -> None:
         else: 
             STATUS.update_step("setup", "leap", "error")
     
-    protein_max_resid: int = pdb.get_protein_res_id_range(io.text_read(os.path.join(setup_path, "complex.pdb")))
+    protein_max_resid: int = pdb.get_protein_res_id_range(lines=io.text_read(path=os.path.join(setup_path, config.protein_pdb)))
     
     md = MDClass(backend="AMBER")
     md.set_parmfile(parmfile="complex.parm7")
     md.define_hardware(cpu = config.cpus, gpu = config.gpus)
-    if STATUS.setup.minimize1 != "complete":
-        md.minimize(input_structure="complex.rst7", 
-                    job_name="min1",
-                    steps=10000,
-                    restraints=f"':1-{protein_max_resid}'",
-                    run_path=setup_path,
-                    steps_steepest=5000,
-                    traj_out=0, 
-                    restart_out=500,
-                    energy_out=10
-                    )
-        md.jobs[-1].exe()
-        STATUS.update_step(stage="setup", step="minimize1", status="complete")
+    # if STATUS.setup.minimize1 != "complete":
+    #     md.minimize(input_structure="complex.rst7", 
+    #                 job_name="min1",
+    #                 steps=10000,
+    #                 restraints=f"':1-{protein_max_resid}'",
+    #                 run_path=setup_path,
+    #                 steps_steepest=5000,
+    #                 traj_out=0, 
+    #                 restart_out=500,
+    #                 energy_out=10
+    #                 )
+    #     md.jobs[-1].exe(gpu=True)
+    #     STATUS.update_step(stage="setup", step="minimize1", status="complete")
 
+    # if STATUS.setup.minimize2 != "complete":
+    #     md.minimize(input_structure="min1.rst7", 
+    #                 job_name="min2",
+    #                 steps=10000,
+    #                 restraints=None,
+    #                 run_path=setup_path,
+    #                 steps_steepest=5000,
+    #                 traj_out=0, 
+    #                 restart_out=500,
+    #                 energy_out=10
+    #                 )
+    #     md.jobs[-1].exe(gpu=True)
+    #     STATUS.update_step(stage="setup", step="minimize2", status="complete")
 
-    # if config.pre_parameterised is False:
-    #     raise NotImplementedError
-
-
-
-    # md = MDClass(backend="AMBER")
-    # md.set_parmfile(parmfile=config.parm_file) # pyright: ignore[reportArgumentType]
-    # md.define_hardware(cpu = config.cpus, gpu = config.gpus)
-
-    # if config.pre_equilibrated is False:
-    #     md = standard_md.initialise_system(mm=md, path="./setup")
-    #     for job in md.jobs:
-    #         if job.gpu:
-    #             partition = "compchemq"
-    #             gpu=1
-    #         else:
-    #             partition = "defq"
-    #             gpu=0
-    #         slurm_sub = Slurm(partition=partition)
-    #         slurm_sub.set_modules(config.hpc["module_files"])
-    #         slurm_sub.set_gpus(gpu)
-    #         slurm_sub.set_ntasks(job.kernel.cores)
-    #         slurm_sub.set_name(job.inputfile_name)
-    #         job.exe()
-
+    md = custom_recipies.qian_init_system(md, setup_path, protein_max_resid)
+    for job in md.jobs:
+        if STATUS.get_status("setup", job.inputfile_name) != "complete":
+            job.exe(gpu=True)
+            STATUS.update_step("setup", job.inputfile_name, "complete")
 
 
 if __name__ == "__main__":

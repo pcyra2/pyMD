@@ -5,7 +5,7 @@ KNOWN_RESIDUES = [
                 "ACE", "ALA", "ARG", "ASH", "ASN", "ASP", "CYM", "CYS",
                 "CYX", "GLH", "GLN", "GLU", "GLY", "HIE", "HIP", "HIS",
                 "HYP", "ILE", "LEU", "LYN", "LYS", "MET", "NME", "PHE", 
-                "PRO", "SER", "THR", "TRP", "TYR", "VAL"
+                "PRO", "SER", "THR", "TRP", "TYR", "VAL", "HID"
                 ]
 
 

@@ -21,6 +21,8 @@ class StageData:
     def _to_dict(self) -> dict:
         return {key:value for key, value in vars(self).items() if not key.startswith('_')}
 
+    def get_status(self, step: str) -> str:
+        return getattr(self, step)
 
 class StatusTracker:
     _file_path: str
@@ -62,3 +64,6 @@ class StatusTracker:
                 sd.update_step(step=step, status=status)
             setattr(self, stage, sd)
 
+    def get_status(self, stage: str, step: str) -> str:
+        stg: StageData =  getattr(self, stage)
+        return stg.get_status(step=step)

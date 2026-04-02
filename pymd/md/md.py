@@ -206,13 +206,15 @@ class MDClass:
             path (str, optional): Work directory for the calculation. Defaults to "./".
             hpc_sub (bool, optional): Whether to attach a slurm job to the job. Defaults to False.
         """
+        if self.kernel.config._minimisation == True:
+            self.kernel.config.set_dynamics(timestep)
         if thermostat is None:
             thermostat = self.kernel.defaults.ntt
         self.kernel.set_ensemble(ensemble = "heat",
                                 steps=steps,
                                 thermostat = thermostat,
                                 start_temp = start_temperature,
-                                end_temperature = end_temperature,
+                                end_temp = end_temperature,
                                 timestep = timestep
                                 )
         if restraints is not None:

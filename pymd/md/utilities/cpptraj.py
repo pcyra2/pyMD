@@ -58,6 +58,23 @@ run
 """
     return file
 
+def _rmsd_protein_backbone() -> str:
+    return f"rmsd backbone_rmsd @C,CA,N out backbone_RMSD refererence\n"
+
+def _set_reference(file: str) -> str:
+    return f"reference {file}\n"
+
+def trajectory_analysis(
+        parm_file: str,
+        trajectories: list[str],
+        reference: str|None,
+        ) -> list[str]:
+    file = f"parm {parm_file}\n"
+    for traj in trajectories:
+        file += f"trajin {traj}\n"
+    if reference is not None:
+        file += _set_reference(file=reference)
+
 
 def run_cpptraj(
         job_file: str|list[str],

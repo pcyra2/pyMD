@@ -42,12 +42,12 @@ class Amber:
         if output_file_name is None:
             output_file_name = input_file_name
         if gpu:
-            return f"pmemd.cuda -O -i {input_file_name}.in -p {self.parm_file} -c {input_structure_name} -ref {input_structure_name} -r " \
-                + f"{self.parm_file} -o {output_file_name}.out -r {output_file_name}.rst7" \
+            return f"pmemd.cuda -O -i {input_file_name}.in -p {self.parm_file} -c {input_structure_name} -ref {input_structure_name} " \
+                + f"-o {output_file_name}.out -r {output_file_name}.rst7" \
                 +f" -x {output_file_name}.nc"
         else:
-            return f"sander -O -i {input_file_name}.in -p {self.parm_file} -c {input_structure_name} -ref {input_structure_name} -r " \
-                + f"{self.parm_file} -o {output_file_name}.out -r {output_file_name}.rst7" \
+            return f"sander -O -i {input_file_name}.in -p {self.parm_file} -c {input_structure_name} -ref {input_structure_name} " \
+                + f" -o {output_file_name}.out -r {output_file_name}.rst7" \
                 + f" -x {output_file_name}.nc"
 
     def exec(
@@ -155,6 +155,7 @@ class Amber:
         elif ensemble == "heat":
             # assert "steps" in kwargs, "Must provide number of steps for heating ensemble"
             # steps = kwargs["steps"]
+            self.config.set_ensemble("heat")
 
             ## Obtain thermostat, if not provided use default
             if "thermostat" in kwargs:
@@ -196,9 +197,10 @@ class Amber:
             if "shake" in kwargs:
                 shake = kwargs["shake"]
             else:
-                shake = self.defaults.nct
+                shake = self.defaults.ntc
 
             self.config.set_dynamics(timestep=dt, shake=shake)
+            self.config.nstlim = steps
         elif ensemble == "nvt":
             # assert "steps" in kwargs, "Must provide number of steps for heating ensemble"
             # steps = kwargs["steps"]
@@ -234,10 +236,11 @@ class Amber:
             if "shake" in kwargs:
                 shake = kwargs["shake"]
             else:
-                shake = self.defaults.nct
+                shake = self.defaults.ntc
 
             self.config.set_dynamics(timestep=dt, shake=shake)
             self.config.set_ensemble(ensemble="nvt")
+            self.config.nstlim = steps
         elif ensemble == "npt":
             # assert "steps" in kwargs, "Must provide number of steps for npt ensemble"
             # steps = kwargs["steps"]
@@ -281,7 +284,7 @@ class Amber:
             if "shake" in kwargs:
                 shake = kwargs["shake"]
             else:
-                shake = self.defaults.nct
+                shake = self.defaults.ntc
 
             if "pressure" in kwargs:
                 pressure = kwargs["pressure"]
@@ -291,6 +294,7 @@ class Amber:
 
             self.config.set_dynamics(timestep=dt, shake=shake)
             self.config.set_ensemble(ensemble="npt")
+            self.config.nstlim = steps
 
 
     def _reset_config(self) -> None:
