@@ -71,6 +71,18 @@ class Atom:
         """
         self.atom_type = atom_type
 
+class Bond:
+    atom1: int
+    atom2: int
+    length: float
+
+    def __init__(self, at1: int, at2: int) -> None:
+        self.atom1 = at1
+        self.atom2 = at2
+
+    def set_length(self, length: float) -> None:
+        self.length = length
+
 class Molecule:
     """molecule class. Contains information about a given molecule
 
@@ -78,11 +90,13 @@ class Molecule:
         charge (int): net charge of the molecule
         spin (int): number of unpaired electrons (2S not 2S + 1)
         atoms (list[Atom]): List of atoms and their coordinates
+        bonds (list[Bond]): List of Bonds
         nat (int): number of atoms in the molecule
     """
     charge: int
     spin: int
     atoms: list[Atom]
+    bonds: list[Bond]
     nat: int
 
     def __init__(self, ) -> None:
@@ -101,7 +115,8 @@ class Molecule:
         self.charge = charge
         self.spin = spin
 
-    def from_xyz(self, lines:list[str], charge:int, spin:int) -> None:
+
+    def from_xyz(self, lines: list[str]|str, charge: int, spin: int) -> None:
         """
         Initialises a molecule object from the text within a .xyz file
 
@@ -113,13 +128,48 @@ class Molecule:
         if isinstance(lines, str):
             lines = lines.split(sep="\n")
         self.nat = int(lines[0])
-        atoms = []*self.nat
+        atoms = [Atom]*self.nat
         for i in range(self.nat):
             items = lines[i+2].split()
             atoms[i] = Atom(element=items[0], x=float(items[1]), y=float(items[2]), z=float(items[3]))
         self.atoms = atoms
         self.charge = charge
         self.spin = spin
+
+
+    def from_mol2(self, lines: list[str], charge: int, spin: int):
+        tmp = lines[2].split()
+        self.nat = int(tmp[0])
+        nbonds = int(tmp[1])
+        atoms = [] * self.nat
+        bonds = [] * nbonds
+        ATOM_LINES = False
+        BOND_LINES = False
+        for line in lines:
+            if line.startswith("@<TRIPOS>ATOM"):
+                assert BOND_LINES is False
+                i = -1
+                ATOM_LINES=True
+                continue
+            if line.startswith("@<TRIPOS>BOND"):
+                assert ATOM_LINES is False
+                i = -1
+                BOND_LINES=True
+            if ATOM_LINES is True:
+                i += 1
+                tmp = line.split()
+                atoms[i] = Atom(element=tmp[1].replace(tmp[0],""), x=tmp[2], y=tmp[3], z=tmp[4])
+                if i == self.nat:
+                    ATOM_LINES = False
+            if BOND_LINES is True:
+                i += 1
+                tmp = line.split()
+                bonds[i] = Bond(at1=int(tmp[0]), at2=int(tmp[1]))
+                if i == nbonds:
+                    BOND_LINES = False
+        self.atoms = atoms
+        self.bonds = bonds
+
 
     def print_coords(self) -> str:
         """Prints the coordinates of a molecule object in a format similar to the .xyz format, 
