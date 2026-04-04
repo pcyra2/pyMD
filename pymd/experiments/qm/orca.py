@@ -42,6 +42,8 @@ def single_point() -> None:
     extra.add_argument("-ri", "--rijcosx", help="Use the resolution of identity to speed up the " \
                         "calculation. No extra arguments required.", action="store_true")
     extra.add_argument("-no_easy", "--no_easy", help="Whether to use easy convergence tactics",action="store_true")
+    extra.add_argument("-solv", "--solvent", help="The implicit solvent to use. This will be using the CPCM Model", required=False, default="None")
+
     args = parser.parse_args()
 
     if args.input_structure is None:
@@ -67,6 +69,8 @@ def single_point() -> None:
         job.set_conv_criteria(args.convergence_criteria)
         if args.no_easy is False:
             job.add_job_variables("EasyConv")
+        if args.solvent != "None":
+            job.add_solvent(solvent=args.solvent, model="CPCM")
         job.run()
         job.print_output()
 
@@ -106,7 +110,13 @@ def optimise() -> None:
                                 "extreme"], default="tight", required=False)
     extra.add_argument("-ri", "--rijcosx", help="Use the resolution of identity to speed up the " \
                         "calculation. No extra arguments required.", action="store_true")
-    extra.add_argument("-no_easy", "--no_easy", help="Whether to use easy convergence tactics",action="store_true")
+    extra.add_argument("-no_easy", "--no_easy", help="Whether to use easy convergence tactics", 
+                       action="store_true")
+    extra.add_argument("-solv", "--solvent", help="The implicit solvent to use. This will be " \
+                        "using the CPCM Model", required=False, default="None")
+    extra.add_argument("-f", "--frequency", help="Whether to perform a subsequent frequency" \
+                        " calculation to check if the system is a true minima/saddle point.", 
+                        action="store_true")
     args = parser.parse_args()
 
     if args.input_structure is None:
@@ -139,5 +149,8 @@ def optimise() -> None:
         job.set_conv_criteria(args.convergence_criteria)
         if args.no_easy is False:
             job.add_job_variables("EasyConv")
+        if args.solvent != "None":
+            job.add_solvent(solvent=args.solvent, model="CPCM")
+
         job.run()
         job.print_output()
