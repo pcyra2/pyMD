@@ -6,7 +6,9 @@ setup(
     py_modules=['pymd'],
     entry_points={
         'console_scripts': [
-            "pTI = pymd.experiments.protein_thermodynamic_integration:main"
+            "pTI = pymd.experiments.md.protein_thermodynamic_integration:main",
+            "SinglePoint = pymd.experiments.qm.orca:single_point",
+            "Opt = pymd.experiments.qm.orca:optimise"
         ],
     },
     install_requires=["pyscf", "rdkit", "spyrmsd", "matplotlib",
