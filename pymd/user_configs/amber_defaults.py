@@ -1,6 +1,7 @@
 """#TODO
 """
 import os
+import shutil
 import pymd.tools.convert as convert
 
 
@@ -42,7 +43,7 @@ class AmberConfig:
 
 
         ## Retraints and potentials
-        nct (int): Shake setting, 1 = No shake, 2 = X-H bonds, 3 = all bonds
+        ntc (int): Shake setting, 1 = No shake, 2 = X-H bonds, 3 = all bonds
         ntf (int): Force evolution, 1=all forces, 2=all except H (NTC=2), 3=None (NTC=3)
         jfastw (int): Fast water setting for shake, set to 4 if not desired
         dielec (float): Dielectric constant for electrostatic interactions.
@@ -96,8 +97,8 @@ class AmberConfig:
         mbar_lambda (str): A list of comma sepparated floats defining the lambda windows
             e.g. `0.0, 0.2, 0.4, 0.6, 0.8, 1.0,`
     """
-    _GPUPath: str = "" # Path to the GPU binary of AMBER
-    _CPUPath: str = "" # Path to the CPU binary of AMBER
+    _GPUPath: str = shutil.which("pmemd.cuda") # Path to the GPU binary of AMBER
+    _CPUPath: str = shutil.which("sander") # Path to the CPU binary of AMBER
 
     ## IO options
     ntpr: int = 100 # Frequency to write mdout energy
@@ -115,7 +116,7 @@ class AmberConfig:
     ## Simulation options
 
     irest: int = 0 # Whether to restart the simulation, 0 = new simulation, 1 = continue simulation
-    cut: float = 8 # Non-bonded cutoff distance (Angstrom)
+    cut: float = 12.0 # Non-bonded cutoff distance (Angstrom)
     ntx: int = 1 # Whether to read coordinates and velocities from the restart file, 1 = no, 5 = yes
 
     ## Dynamics options
@@ -125,8 +126,8 @@ class AmberConfig:
 
 
     ## Retraints and potentials
-    nct: int = 2 # Shake setting, 1 = No shake, 2 = X-H bonds, 3 = all bonds
-    ntf: int = 1 # Force evolution, 1=all forces, 2=all except H (NTC=2), 3=None (NTC=3)
+    ntc: int = 2 # Shake setting, 1 = No shake, 2 = X-H bonds, 3 = all bonds
+    ntf: int = 2 # Force evolution, 1=all forces, 2=all except H (NTC=2), 3=None (NTC=3)
     jfastw: int = 0 # Fast water setting for shake, set to 4 if not desired
     dielec: float = 1.0 # Dielectric constant for electrostatic interactions.
     ntr: int = 0 # Toggles restraint_mask and restraint_wt
@@ -144,7 +145,7 @@ class AmberConfig:
     gamma_ln: float = 2.0 # Collision frequency
 
     ## Pressure Settings
-    ntp: int = 0 # Pressure scaling, 1=isotropic (Recommended),
+    ntp: int = 1 # Pressure scaling, 1=isotropic (Recommended),
         # 2=anisotropic, 3=semiisotropic, 4=targeted volume
     barostat: int = 1 # Barostat, 1=Berendsen, 2=MonteCarlo
     pres0: float = 1.0 # Reference pressure (bar)
@@ -178,14 +179,18 @@ class AmberConfig:
     mbar_lambda: str # A list of comma sepparated floats defining the lambda windows
         # e.g. `0.0, 0.2, 0.4, 0.6, 0.8, 1.0,`
 
-    def __init__(self) -> None:
+    def __init__(self, cutoff: float|None = None) -> None:
         # if os.path.isfile(path=self._CPUPath) is False:
         #     print("WARNING: AMBER CPU path not found, please fix this to use amber CPU")
-        #     print(self._CPUPath)
+        # print(self._CPUPath)
         # if os.path.isfile(path=self._GPUPath) is False:
         #     print("WARNING: AMBER GPU path not found, please fix this to use amber CPU")
-        #     print(self._GPUPath)  
-        pass
+        # print(self._GPUPath)
+        if cutoff is None:
+            self.cut = self.cut
+        else:
+            self.cut = cutoff
+
 
     def set_timestep(self, timestep: float) -> None:
         """
@@ -220,7 +225,9 @@ class AmberConfig:
             + f"steps, ({steps_total} not allowed)"
         if steps_steepest is None:
             steps_steepest = int(steps_total/2)
+        self.irest = 0
         self.imin = 1
+        self.ntmin = 1
         self._minimisation = True
         self.ncyc = steps_steepest
         self.maxcyc = steps_total
@@ -230,15 +237,23 @@ class AmberConfig:
         
         Args:
             timestep (float, optional): Timestep to use for dynamics simulation. Defaults to 2 ps.
-            shake (int, optional): The nct configuration to use. 1 = no shake, 2 is restrain 
+            shake (int, optional): The ntc configuration to use. 1 = no shake, 2 is restrain 
             X-H bonds, 3 is shake all bonds. Defaults to 1.
         """
         self.imin = 0
         self._minimisation = False
         self._update_timestep(timestep=timestep, timestep_units=timestep_units)
-        self.nct = shake
+        self.ntc = shake
+        self.ntf = shake
         if self._check_timestep_compatibility() is False:
-            self.nct = 2
+            self.ntc = 2
+            self.ntf = 2
+        for at in ["ncyc", "maxcyc", "ntmin"]:
+            try:
+                delattr(self, at)
+            except AttributeError:
+                pass
+
 
     def _check_timestep_compatibility(self) -> bool:
         """Checks that the timestep and the shake are compatible with each other
@@ -246,9 +261,9 @@ class AmberConfig:
         Returns:
             bool: True/False depending on compatibility
         """
-        if self.nct == 1 and self.dt < 0.001:
+        if self.ntc == 1 and self.dt < 0.001:
             return True
-        elif self.nct > 1:
+        elif self.ntc > 1:
             return True
         else:
             return False
@@ -289,14 +304,14 @@ class AmberConfig:
             self.ntr = 0
             try:
                 del self.restraintmask
-            except NameError:
+            except AttributeError:
                 # del self.restraintmask
                 pass
 
 
             try:
                 del self.restraint_wt
-            except NameError:
+            except AttributeError:
                 # del self.restraint_wt
                 pass
 
@@ -308,6 +323,7 @@ class AmberConfig:
         """
         assert temperature >= 0, f"ERROR: Cannot have a negative temperature, {temperature} not " \
             + "allowed"
+        self.gamma_ln = self.gamma_ln
         self.set_heating(start_temp=temperature, end_temp=temperature, nsteps=1)
 
     def set_heating(self, start_temp: float = 0.0, end_temp: float = 300.0, nsteps: int = 1) -> None:
@@ -320,9 +336,10 @@ class AmberConfig:
         """
         if "ntt" not in self.to_dict().keys():
             self.set_thermostat(thermostat=self.ntt)
-        self.temp0 = end_temp
         self.tempi = start_temp
+        self.temp0 = end_temp
         self._heating_steps = nsteps
+        self.gamma_ln = self.gamma_ln
         
     def restart_dynamics(self, restart: bool|int = True) -> None:
         """Sets whether to restart the dynamics simulation or not
@@ -342,11 +359,16 @@ class AmberConfig:
         if restart:
             self.irest = 1
             self.ntx = 5
+            try:
+                del self.nmropt
+            except AttributeError:
+                pass
         else:
             self.irest = 0
             self.ntx = 1
+            self.nmropt = 1
 
-    def set_thermostat(self, thermostat: int|str) -> None:
+    def set_thermostat(self, thermostat: int|str|None) -> None:
         """Sets the thermostat for the simulation.
 
         Args:
@@ -356,7 +378,7 @@ class AmberConfig:
 
         """
         if isinstance(thermostat, str):
-            thermostat_int = THERMOSTATS.get(thermostat.casefold())
+            thermostat_int: int | None = THERMOSTATS.get(thermostat.casefold())
             if thermostat_int is None:
                 raise ValueError(f"Thermostat {thermostat} not recognised, known " \
                                 + f"thermostats are: {list(THERMOSTATS.keys())}")
@@ -365,6 +387,8 @@ class AmberConfig:
                 raise ValueError(f"Thermostat {thermostat} not recognised, known " \
                                 + f"thermostats are: {list(THERMOSTATS.values())}")
             thermostat_int = thermostat
+        else:
+            thermostat_int= self.ntt
         self.ntt = thermostat_int
 
     def set_pressure_scaling(self, pressure_scaling: int|str) -> None:
@@ -438,12 +462,13 @@ class AmberConfig:
         Args:
             pressure (float): Pressure in bar
         """
-        assert pressure >= 0, f"ERROR: Cannot have a negative pressure, {pressure} not allowed"
+        # assert pressure >= 0, f"ERROR: Cannot have a negative pressure, {pressure} not allowed"
         if "barostat" not in self.to_dict().keys():
             self.set_barostat(barostat=self.barostat)
         if "ntp" not in self.to_dict().keys():
             self.set_pressure_scaling(pressure_scaling=self.ntp)
-        self.pres0 = pressure
+        if pressure > 0: # Allows for not defining pressure but scaling pressure
+            self.pres0 = pressure
 
     def gen_input_file(self, filename: str) -> list[str]:
         """Generates an AMBER input file from the current configuration
@@ -457,14 +482,13 @@ class AmberConfig:
 
         header = f"{filename} Generated by pyMD, CopyRight (C) 2026 Ross Amory\n&cntrl"
         config = self.to_dict()
-        body = [f"{key} = {value}" for key, value in config.items()]
-        footer = "/"
+        body = [f"  {key}={value}," for key, value in config.items()]
+        footer = "/\n"
 
         if "tempi" in config and "temp0" in config: # Add the heating section if we are heating
             if config["tempi"] != config["temp0"]:
-                footer += f"""
-&wt type'TEMP0' istep1=0, istep2={self._heating_steps}, value1={self.tempi}, value2={self.temp0} /
-&wt type 'TEMP0', istep1={int(self._heating_steps)+1}, istep2={self.maxcyc}, value1={self.temp0}, value2={self.temp0} /
+                footer += f"""&wt type='TEMP0' istep1=0, istep2={self._heating_steps}, value1={self.tempi}, value2={self.temp0} /
+&wt type='TEMP0', istep1={int(self._heating_steps)+1}, istep2={self.nstlim}, value1={self.temp0}, value2={self.temp0} /
 &wt  type='END' /
 """
         return [header] + body + [footer]

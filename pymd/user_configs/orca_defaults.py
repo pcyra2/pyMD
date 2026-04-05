@@ -1,8 +1,35 @@
+import shutil
 from pymd.tools.structure import Atom, Molecule
 
 CALCULATION_TYPES = ["SP", "Opt", "OptTS", "Freq"]
 
 class OrcaConfig:
+    """_summary_
+
+    Attributes:
+        method (str): The QM method to use 
+        basis (str): The basis set to use
+        dispersion (str): The dispersion correction to use
+        grid (str): The GRID size to use. Defaults to DEFGRID3.
+        print_level (str): Level of printing.
+        scf_level (str): Level of SCF convergence.
+        rij (str): Whether to use the resolution of identity approximiation.
+        convergence_level (str): How aggresive to be with SCF convergence.
+        implicit_solvent (str): What implicit solvent to use (if any).
+        freq (str): 
+        scan (str): Whether a scan calculation will be performed. Either "scan" or "scanTS" should be used.
+        IRC (str): Whether an intrinsic reaction coordinate calculation should be performed.
+
+        ## Hidden attributes that are not printed in the input file.
+        _path (str): The path to the ORCA executable. As long as orca is in the path, this should be found automatically using 'which'.
+        _cores (int): Number of CPU cores to run the calculation on. Defaults to 12.
+        _mem_per_cpu (int): Amount of memory in MB per core to allocate for the calculation. Defaults to 1 GB/core.
+        _charge (int): The net charge of the system. Defaults to 0.
+        _spin (int): The multiplicity of the system. This should be 2S+1. Defaults to 1.
+        _molecule (Molecule): A Molecule object containing coordinates, spin and charge of the system. 
+            This can also be used to track structural properties.
+        
+    """
     method: str = "PBE"
     basis: str = "def2-SVP"
     dispersion: str = "D3BJ"
@@ -12,7 +39,12 @@ class OrcaConfig:
     rij: str = "RIJCOSX"
     convergence_level: str = "EasyConv"
     implicit_solvent: str
-    _cores:int = 12
+    IRC: str = "IRC"
+    scan: str = "scan"
+    freq: str = "freq"
+    
+    
+    _path: str = shutil.which("orca")
     _mem_per_cpu: int = 1000
     _charge: int = 0
     _spin: int = 1
@@ -21,6 +53,7 @@ class OrcaConfig:
     _scan_start: float
     _scan_stop: float
     _scan_steps: int
+
 
     ##### Do not edit beyond this point #####
     _structure_line: str

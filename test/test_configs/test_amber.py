@@ -31,13 +31,13 @@ def test_dynamics_toggle():
     assert config._minimisation is True
     config.set_dynamics(timestep=0.002, shake=3)
     assert config.dt == 0.002
-    assert config.nct == 3
+    assert config.ntc == 3
     config.set_dynamics(timestep=0.0005, shake=1)
     assert config.dt == 0.0005
-    assert config.nct == 1
+    assert config.ntc == 1
     config.set_dynamics(timestep=1)
     assert config.dt == 1
-    assert config.nct == 2
+    assert config.ntc == 2
 
 
 def test_temperature_controls():
