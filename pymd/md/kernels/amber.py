@@ -18,9 +18,7 @@ class Amber:
     parm_file: str
     cores: int
 
-    def __init__(
-            self,
-            config: AmberConfig = AmberConfig()) -> None:
+    def __init__(self, config: AmberConfig = AmberConfig()) -> None:
         self.defaults = copy.deepcopy(x = config)
         self.config = copy.deepcopy(x = config)
 
@@ -120,7 +118,7 @@ class Amber:
         Args:
             cores (int): number of CPU's to run on
         """
-        assert cores > 0, "Cannot have a negative number of CPU's"
+        assert cores > 0, "ERROR:Cannot have a negative number of CPU's"
         self.cores = cores
 
 
