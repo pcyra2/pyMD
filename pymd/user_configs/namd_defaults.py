@@ -172,7 +172,7 @@ class NamdConfig:
         self.minimize = steps_total
         self._minimisation = True
 
-    def set_dynamics(self, timestep: float, shake: str, timestep_units: str):
+    def set_dynamics(self, timestep: float, shake: str, timestep_units: str) -> None:
         self.set_timestep(timestep=timestep, units=timestep_units)
         assert shake in SHAKE_VARIABLES
         if shake != "none":
@@ -180,7 +180,7 @@ class NamdConfig:
             self.rigidIterations = self.rigidIterations
             self.rigidTolerance = self.rigidTolerance
 
-    def set_outputs(self, energy: int, restart: int, trajectory: int):
+    def set_outputs(self, energy: int, restart: int, trajectory: int) -> None:
         self.outputEnergies = energy
         self.outputTiming = energy
         self.DCDfreq = trajectory
