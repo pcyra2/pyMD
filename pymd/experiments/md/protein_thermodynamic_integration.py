@@ -137,7 +137,7 @@ def main() -> None:
     protein_max_resid: int = pdb.get_protein_res_id_range(lines=io.text_read(path=os.path.join(setup_path, config.protein_pdb)))
     
     md = MDClass(backend="AMBER")
-    md.set_parmfile(parmfile="complex.parm7")
+    md.set_parmfile(parm_file="complex.parm7")
     md.define_hardware(cpu = config.cpus, gpu = config.gpus)
     # if STATUS.setup.minimize1 != "complete":
     #     md.minimize(input_structure="complex.rst7", 

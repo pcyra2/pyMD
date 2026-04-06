@@ -23,8 +23,8 @@ def test_initialisation(fp):
     MM = standard_md.initialise_system(MM, path=temp_dir)
 
     pprint(vars(MM))
-    pprint((MM.jobs[0].kernel.config.to_dict()))
-    pprint((MM.jobs[1].kernel.config.to_dict()))
+    pprint((MM.jobs[0].kernel.kernel.to_dict()))
+    pprint((MM.jobs[1].kernel.kernel.to_dict()))
     assert len(MM.jobs) == 5
     for job in MM.jobs:
         assert job.complete == False # Jobs should not have been run

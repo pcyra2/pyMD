@@ -1,8 +1,11 @@
 """#TODO
 """
-import os
 import shutil
-import pymd.tools.convert as convert
+import subprocess
+import os
+
+from pymd.tools import convert, io
+
 
 
 class AmberConfig:
@@ -97,8 +100,8 @@ class AmberConfig:
         mbar_lambda (str): A list of comma sepparated floats defining the lambda windows
             e.g. `0.0, 0.2, 0.4, 0.6, 0.8, 1.0,`
     """
-    _GPUPath: str = shutil.which("pmemd.cuda") # Path to the GPU binary of AMBER
-    _CPUPath: str = shutil.which("sander") # Path to the CPU binary of AMBER
+    _GPUPath: str|None = shutil.which("pmemd.cuda") # Path to the GPU binary of AMBER
+    _CPUPath: str|None = shutil.which("sander") # Path to the CPU binary of AMBER
 
     ## IO options
     ntpr: int = 100 # Frequency to write mdout energy
@@ -158,6 +161,7 @@ class AmberConfig:
     _output_file_name: str
     _param_file: str
     _input_coord_file: str
+    _run_lines: str
 
     ## Thermodynamic Integration config
     icfe: int = 0 # whether to do a free energy calculation. 0 = No, 1 = Yes
@@ -191,6 +195,83 @@ class AmberConfig:
         else:
             self.cut = cutoff
 
+    def clear_attribute(self, attribute: str) -> None:
+        if hasattr(self, attribute) is True:
+            delattr(self, attribute)
+
+    def set_attribute(self, attribute: str, value: str|float|int) -> None:
+        setattr(self, attribute, value)
+
+
+    def get_exe_path(self, gpu: bool) -> str|None:
+        if gpu:
+            return self._GPUPath
+        else:
+            return self._CPUPath
+
+
+    def _gen_runlines(
+            self,
+            input_file_name: str,
+            input_structure_name: str,
+            output_file_name: str|None = None,
+            gpu: bool = False) -> str:
+        """Generates the command that runs the AMBER calculation
+
+        Args:
+            input_file_name (str): input file name without the extension.
+            input_structure_name (str): Name of coordinate file that the simulation starts from.
+            output_file_name (str): Name of output file. Defaults to None, in which case it is 
+                the same as input_file_name. Defaults to None.
+            gpu (bool): Whether to use the gpu or not. Defaults to False (sander).
+        """
+        if output_file_name is None:
+            output_file_name = input_file_name
+        if gpu:
+            self._run_lines = f"pmemd.cuda -O -i {input_file_name}.in -p {self._param_file} -c {input_structure_name} -ref {input_structure_name} " \
+                + f"-o {output_file_name}.out -r {output_file_name}.rst7" \
+                +f" -x {output_file_name}.nc"
+ 
+        else:
+            self._run_lines = f"sander -O -i {input_file_name}.in -p {self._param_file} -c {input_structure_name} -ref {input_structure_name} " \
+                + f" -o {output_file_name}.out -r {output_file_name}.rst7" \
+                + f" -x {output_file_name}.nc"
+        return self._run_lines
+    
+    def exec(
+            self,
+            input_file_name: str,
+            output_file_name: str,
+            input_structure_name: str,
+            gpu: bool = False,
+            path: str = "./") -> subprocess.CompletedProcess[bytes]:
+        """
+        Runs the amber software as part of the script.
+    
+        Args:
+            input (str): Base name of input file
+            output (str): Base name of output files
+            gpu (bool): Whether to use GPU or not. Defaults to False
+            path (str): Where to run the calculation. Defaults to ./
+
+        Returns:
+            outlines (str): The CLI output from runnning the command.
+        """
+        inputfile = self.gen_input_file(filename = input_file_name)
+        io.text_dump(inputfile, os.path.join(path, f"{input_file_name}.in"))
+
+        assert os.path.isfile(path = os.path.join(path, input_structure_name)), \
+            f"Input structure file is not found: {input_structure_name}"
+
+        command = self._gen_runlines(input_file_name = input_file_name,
+                            input_structure_name = input_structure_name,
+                            output_file_name = output_file_name,
+                            gpu = gpu)
+
+        print(f"INFO: Running command: {command} in {path}")
+
+        output = subprocess.run(args = command.split(), cwd=path, check=True)
+        return output
 
     def set_timestep(self, timestep: float) -> None:
         """
@@ -212,7 +293,7 @@ class AmberConfig:
         assert timestep > 0, f"ERROR: Cannot have a negative timestep: {timestep} not allowed"
         self.dt = timestep
 
-    def set_minimisation(self, steps_total: int, steps_steepest: int|None = None) -> None:
+    def set_minimisation_variables(self, steps_total: int, steps_steepest: int|None = None) -> None:
         """Changes the configuration to run a minimisation rather than a dynamics simulation
 
         Args:
@@ -232,7 +313,7 @@ class AmberConfig:
         self.ncyc = steps_steepest
         self.maxcyc = steps_total
 
-    def set_dynamics(self, timestep:float = 0.002, shake: int = 1, timestep_units: str = "ps") -> None:
+    def set_dynamics(self, steps: int, timestep:float = 0.002, shake: int = 1, timestep_units: str = "ps") -> None:
         """Changes the configuration to run a dynamics simulation
         
         Args:
@@ -245,14 +326,12 @@ class AmberConfig:
         self._update_timestep(timestep=timestep, timestep_units=timestep_units)
         self.ntc = shake
         self.ntf = shake
+        self.nstlim = steps
         if self._check_timestep_compatibility() is False:
             self.ntc = 2
             self.ntf = 2
         for at in ["ncyc", "maxcyc", "ntmin"]:
-            try:
-                delattr(self, at)
-            except AttributeError:
-                pass
+            self.clear_attribute(attribute=at)
 
 
     def _check_timestep_compatibility(self) -> bool:
@@ -479,7 +558,6 @@ class AmberConfig:
         Returns:
             list[str]: The lines of the input file to write
         """
-
         header = f"{filename} Generated by pyMD, CopyRight (C) 2026 Ross Amory\n&cntrl"
         config = self.to_dict()
         body = [f"  {key}={value}," for key, value in config.items()]
