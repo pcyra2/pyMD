@@ -1,44 +1,35 @@
-
-import subprocess
-import os
+"""
+#TODO
+"""
 import copy
 
+from pymd.md.md import MDClass, MDJobClass
+from pymd.tools.slurm import Slurm
 from pymd.user_configs.namd_defaults import NamdConfig
+from pymd.tools import convert
 
-class Namd:
+class Namd(MDClass):
     defaults: NamdConfig
     config: NamdConfig
-    parm_file: str
-    cores: str # either +pNCORES or +oneWthPerCore
 
-    def __init__(self, config: NamdConfig = NamdConfig()) -> None:
+    def __init__(self,
+            start_coordinates: str,
+            parm_file: str,
+            config: NamdConfig = NamdConfig(),
+            amber_parm: bool = True) -> None:
+        super().__init__(start_coordinates=start_coordinates, parm_file=parm_file)
         self.defaults = copy.deepcopy(x=config)
         self.config = copy.deepcopy(x=config)
+        self.defaults.parmfile = parm_file
+        self.config.parmfile = parm_file
+        if amber_parm:
+            self.config.ambercoor = start_coordinates
+            self.defaults.ambercoor = start_coordinates
 
-    def _gen_runlines(self, 
-            input_file_name: str,
-            output_file_name: str|None = None,
-            gpu: bool = False) -> str:
-        if output_file_name is None:
-            output_file_name = input_file_name
-        if gpu:
-            return f"{self.defaults._GPUPath} {self.cores} +setcpuaffinity +devices 0 {input_file_name}.in > {output_file_name}.log"
-        else:
-            return f"{self.defaults._GPUPath} {self.cores} +setcpuaffinity {input_file_name}.in > {output_file_name}.log"
+            self.config.amber = "yes"
+            self.defaults.amber = "yes"
+        self.config.seed = self.defaults.seed
 
-
-    def set_global(
-            self,
-            parmfile: str) -> None:
-        """
-        Defines the parameter and coordinate files for the initial structure. 
-
-        Args:
-            param (str): .parm7 file
-        """
-        self.parm_file = parmfile
-        self.config.parmfile = parmfile
-        self.defaults.parmfile = parmfile
 
     def set_outputs(
             self,
@@ -54,12 +45,73 @@ class Namd:
         """
         self.config.set_outputs(restart=restart, energy=energy, trajectory=trajectory)
 
-    def set_cores(self, cores: int) -> None:
-        assert cores > 0, "ERROR: Number of cores must be greater than zero"
-        #TODO implement checking to see if it is +oneWthPerCore
-        self.cores = f"+p{cores}"
 
-    
+    def set_restraints(self,
+            restraint: str = "all_not_solvent",
+            restraint_wt: float = 5) -> None:
+        pass
+
+
+    def set_minimisation(self, steps: int,
+            steps_steepest: int|None = None
+            ) -> None:
+        self.config.set_minimisation_variables(steps_total=steps)
+        self.config.clear_attribute(attribute="run")
+
+
+    def set_heating(self,
+            total_steps: int,
+            start_temperature: float,
+            end_temperature: float,
+            heating_steps: int|None = None,
+            time_step: float = 2,
+            thermostat: str|int|None = None,
+            continue_dynamics: bool = False) -> None:
+        pass
+
+
+    def set_nvt(self, steps: int,
+            temperature: float,
+            thermostat: str|int|None = None,
+            time_step: float = 2,
+            continue_dynamics: bool = True
+            ) -> None:
+        pass
+
+
+    def set_npt(self,
+            steps: int,
+            temperature: float,
+            thermostat: str|int|None = None,
+            pressure: float|None = None,
+            barostat: str|int|None = None,
+            pressure_scaling: int|str|None = None,
+            time_step: float = 2,
+            continue_dynamics: bool = True
+            ) -> None:
+        pass
+
+
     def _reset_config(self) -> None:
         """Reset the configuration to defaults."""
         self.config = copy.deepcopy(x=self.defaults)
+
+
+    def build(self,
+            input_file_name: str,
+            input_structure: str,
+            output_file_name: str,
+            run_path: str,
+            gpu: bool = False,
+            hpc: Slurm|None = None
+            ) -> None:
+        self.latest_job = MDJobClass(inputfile_name = input_file_name,
+                input_structure = input_structure,
+                outputfile_name = output_file_name,
+                run_path = run_path)
+        if gpu:
+            self.latest_job.to_gpu()
+        if hpc is not None:
+            self.add_HPC(hpc)
+        self.jobs.append(self.latest_job)
+        self._reset_config()

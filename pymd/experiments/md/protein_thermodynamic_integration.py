@@ -7,6 +7,7 @@ from posixpath import isfile
 import shutil
 from pprint import pprint
 
+from pymd.md.kernels.amber import Amber
 from pymd.md.recipies import thermodynamic_integration as TI
 from pymd.md.recipies import standard_md, custom_recipies
 from pymd.md.utilities import cpptraj, leap
@@ -136,8 +137,11 @@ def main() -> None:
     
     protein_max_resid: int = pdb.get_protein_res_id_range(lines=io.text_read(path=os.path.join(setup_path, config.protein_pdb)))
     
-    md = MDClass(backend="AMBER")
-    md.set_parmfile(parm_file="complex.parm7")
+    md = Amber(start_coordinates="complex.rst7",
+               parm_file="complex.parm7")
+    md.describe_structure(protein_residue_start=1,
+                protein_residue_end=protein_max_resid,
+                )#TODO Add ligand and cofactor defenition.
     md.define_hardware(cpu = config.cpus, gpu = config.gpus)
     # if STATUS.setup.minimize1 != "complete":
     #     md.minimize(input_structure="complex.rst7", 
@@ -167,7 +171,7 @@ def main() -> None:
     #     md.jobs[-1].exe(gpu=True)
     #     STATUS.update_step(stage="setup", step="minimize2", status="complete")
 
-    md = custom_recipies.qian_init_system(md, setup_path, protein_max_resid)
+    md = custom_recipies.qian_init_system(mm=md, path=setup_path)
     for job in md.jobs:
         if STATUS.get_status("setup", job.inputfile_name) != "complete":
             job.exe(gpu=True)

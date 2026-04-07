@@ -197,7 +197,10 @@ class AmberConfig:
 
     def clear_attribute(self, attribute: str) -> None:
         if hasattr(self, attribute) is True:
-            delattr(self, attribute)
+            try:
+                delattr(self, attribute)
+            except AttributeError:
+                pass
 
     def set_attribute(self, attribute: str, value: str|float|int) -> None:
         setattr(self, attribute, value)
@@ -333,7 +336,6 @@ class AmberConfig:
         for at in ["ncyc", "maxcyc", "ntmin"]:
             self.clear_attribute(attribute=at)
 
-
     def _check_timestep_compatibility(self) -> bool:
         """Checks that the timestep and the shake are compatible with each other
 
@@ -346,10 +348,6 @@ class AmberConfig:
             return True
         else:
             return False
-
-    def _update_timestep(self, timestep: float = 0.002, timestep_units: str = "ps") -> None:
-        
-        self.dt = convert.time(in_time=timestep, in_unit=timestep_units, out_unit="ps")
 
     def to_dict(self)->dict:
         """Returns a dictionary of the class attributes"""

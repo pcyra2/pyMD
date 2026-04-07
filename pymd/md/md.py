@@ -166,7 +166,7 @@ class MDClass:
         num_GPU (int): The number of GPU's available to the MD calculation. Defaults to 0.
         base_slurm (Slurm): A template SLURM Class so that jobs can interface with a HPC.
     """
-    jobs: list[MDJobClass]
+    jobs: list[MDJobClass] = []
     latest_job: MDJobClass|None = None
     num_cpu: int = 1
     num_gpu: int = 0
@@ -226,12 +226,14 @@ class MDClass:
     def describe_structure(self,
             protein_residue_start: int,
             protein_residue_end: int,
-            cofactors: list[int]|int,
-            ligands: list[int]|int) -> None:
+            cofactors: list[int]|int|None = None,
+            ligands: list[int]|int|None = None) -> None:
         self.protein_start = protein_residue_start
         self.protein_end = protein_residue_end
-        self.cofactors = cofactors
-        self.ligands = ligands
+        if cofactors is None:
+            self.cofactors = cofactors
+        if ligands is None:
+            self.ligands = ligands
     
     def set_outputs(
             self,

@@ -16,13 +16,15 @@ class Amber(MDClass):
     defaults: AmberConfig
     config: AmberConfig
 
-    def __init__(self, 
+    def __init__(self,
             start_coordinates: str,
             parm_file: str,
             config: AmberConfig = AmberConfig()) -> None:
         super().__init__(start_coordinates = start_coordinates, parm_file = parm_file)
         self.defaults = copy.deepcopy(x = config)
         self.config = copy.deepcopy(x = config)
+        self.defaults._param_file = parm_file
+        self.config._param_file = parm_file
 
 
     def set_outputs(
