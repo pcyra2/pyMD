@@ -75,7 +75,7 @@ def test_pressure_controls():
 
 def test_me():
     config = AmberConfig()
-    amber = Amber(config)
-    amber.set_ensemble(ensemble="min", steps = 100)
+    amber = Amber(start_coordinates="complex.rst7", parm_file="complex.parm7", config=config)
+    amber.set_minimisation(100)
     assert config._minimisation == amber.defaults._minimisation, "config should be the same as defaults."
     assert config._minimisation != amber.config._minimisation, "config should be different to kernel, class copy is broken"

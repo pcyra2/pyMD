@@ -150,7 +150,7 @@ class Molecule:
         if isinstance(lines, str):
             lines = lines.split(sep="\n")
         self.nat = int(lines[0])
-        atoms = []*self.nat
+        atoms = [Atom]*self.nat
         for i in range(self.nat):
             items = lines[i+2].split()
             atoms[i] = Atom(element=items[0], x=float(items[1]), y=float(items[2]), z=float(items[3]))
