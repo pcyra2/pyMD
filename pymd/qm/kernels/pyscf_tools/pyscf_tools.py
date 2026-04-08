@@ -1,3 +1,4 @@
+import imp
 import importlib
 import importlib.util
 
@@ -11,35 +12,19 @@ from pymd.tools.structure import Atom, Molecule
 from pyscf.hessian import thermo
 from pyscf.tools import finite_diff
 import pyscf
-from pyscf import grad as pygrad, qmmm, dft, scf, cc, lib, gto, df
-from pyscf.dft import RKS, UKS
-# from pyscf.geomopt.berny_solver import optimize as optimize_berny #TODO implement
-# from pyscf.geomopt.geometric_solver import optimize as optimize_geometric
-from pyscf.geomopt import as_pyscf_method
-
-
+from pyscf import qmmm, dft
 if importlib.util.find_spec("gpu4pyscf") is not None:
     try:
-        gpu_dft = importlib.import_module("gpu4pyscf.dft")
-        gpu_scf = importlib.import_module("gpu4pyscf.scf")
-        gpu_cc = importlib.import_module("gpu4pyscf.cc")
+        gpu_pyscf = importlib.import_module("gpu4pyscf")
     except:
-        gpu_dft = None
-        gpu_scf = None
-        gpu_cc = None
+        gpu_pyscf = None
 else:
-    gpu_dft = None
-    gpu_scf = None
-    gpu_cc = None
+    gpu_pyscf = None
 
 if importlib.util.find_spec("skala") is not None:
-    SkalaUKS = importlib.import_module("skala.pyscf.SkalaUKS")
-    SkalaUKSGradient = importlib.import_module("skala.pyscf.gradients.SkalaUKSGradient")
-    # from skala.pyscf import SkalaUKS
-    # from skala.pyscf.gradients import SkalaUKSGradient
+    skala = importlib.import_module("skala")
 else:
-    SkalaUKS = None
-    SkalaUKSGradient = None
+    skala = None
 
 from pprint import pprint
 # from pyscf.qsdopt.qsd_optimizer import QSD #TODO add importlib to this. 
@@ -48,7 +33,7 @@ def gen_mol(atoms: Molecule|list,
             basis: str = "sto-3g",
             charge: int = 0,
             spin: int = 0,
-            memory: int = 15000,
+            memory: int = 1000,
             name: str = "mol.out") -> pyscf.gto.Mole:
     if isinstance(atoms, Molecule): 
         text = ""
@@ -85,9 +70,8 @@ def gen_mol(atoms: Molecule|list,
 def HF(
     mol: pyscf.gto.Mole, 
     restricted: bool = True,
-    GPU: bool = False,
-    charges: list = [],
-    charge_locs: list = []
+    charges: list|None = None,
+    charge_locs: list|None = None
     ) -> pyscf.scf.hf.SCF:
     """Runs a Hartree-Fock calculation on a given molecule.
 
@@ -100,82 +84,46 @@ def HF(
     Returns:
         pyscf.scf.hf.SCF: Mean-field object from pyscf.
     """
-    if gpu_scf is None:
-        GPU = False
     if restricted:
-        if GPU:
-            mf = gpu_scf.RHF(mol)
-        else:
-            mf = scf.rhf.RHF(mol)
+        mf = pyscf.scf.rhf.RHF(mol)
     else:
-        if GPU:
-            mf = gpu_scf.UHF(mol)
-        else:
-            mf = scf.uhf.UHF(mol)
+        mf = pyscf.scf.uhf.UHF(mol)
     mf.max_cycle = 200
     mf.level_shift = 1.2
-    if len(charges) > 0:
+    if charges is not None:
+        assert charge_locs is not None, "Must provide charge locations for the charges"
         assert len(charges) == len(charge_locs), "Different number of charges and charge locations."
         mf = qmmm.mm_charge(mf, charge_locs, charges)
     mf = mf.newton().run()
-    grad = mf.nuc_grad_method()
-    return mf, grad
 
-
-def HF_scanner(
-        restricted: bool = True,
-        GPU: bool = False):
-
-    if gpu_scf is None:
-        GPU = False
-    if restricted and GPU:
-        scanner = gto.M().apply(gpu_scf.RHF).as_scanner()
-    elif restricted and GPU == False:
-        scanner = gto.M().apply(scf.rhf.RHF).as_scanner()
-    elif restricted == False and GPU:
-        scanner = gto.M().apply(gpu_scf.UHF).as_scanner()
-    elif restricted == False and GPU == False:
-        scanner = gto.M().apply(scf.rhf.UHF).as_scanner()
-    grad_scanner = scanner.nuc_grad_method().as_scanner()
-    return scanner, grad_scanner
-
-
-def non_scf_DFT(mol: pyscf.gto.Mole, xc:str, disp:None, charges:list=[], charge_locs:list=[], dm0=None):
-    mf = dft.UKS(mol, xc)
-    if disp is not None:
-        mf.disp = disp
-    mf.max_cycle = -1
-    if len(charges) > 0:
-        mf = qmmm.mm_charge(mf, charge_locs, charges)
-    dm = mf.get_init_guess()
-    mf.kernel(dm0=dm)
     return mf
+
 
 
 def DFT(mol:pyscf.gto.Mole,
         xc:str,
         disp=None,
-        GPU:bool=False,
+        gpu:bool=False,
+        restricted: bool = False,
         implicit_solvent: bool = False,
-        charges: list = [],
-        charge_locs:list=[],
+        charges: list|None = None,
+        charge_locs:list|None = None,
         dm0=None,
         no_grad=False):
     
     dispersion = disp
-    if gpu_dft is None:
-        GPU = False
+    if gpu_pyscf is None:
+        gpu = False
 
-    if GPU:
-        mf = gpu_dft.UKS(mol, xc)
+    if gpu:
+        mf = gpu_pyscf.dft.UKS(mol, xc)
     else:
-        mf = UKS(mol, xc)
-    # mf.newton()
-    # mf.init_guess = "huckel"
+        if restricted:
+            mf = dft.RKS(mol=mol, xc=xc)
+        else:
+            mf = dft.UKS(mol=mol, xc=xc)
     mf.max_cycle = 300
     mf.level_shift = 1.2
-
-    # mf.grids.level = 5
     mf.conv_tol = 1e-6
     mf.conv_tol_grad = 1E-3
     # mf.diis_space = 12
@@ -187,8 +135,10 @@ def DFT(mol:pyscf.gto.Mole,
         mf.PCM()
         mf.with_solvent.method = "C-PCM"
         mf.with_solvent.eps = 80.1510
-    elif len(charges) >0:
-        mf = qmmm.mm_charge(mf, charge_locs, charges, unit="Ang" )
+    elif charges is not None:
+        assert charge_locs is not None
+        assert len(charge_locs) == len(charges)
+        mf = qmmm.mm_charge(mf, charge_locs, charges=charges, unit="Ang" )
         # mf.newton()
     if dm0 is not None:
 
