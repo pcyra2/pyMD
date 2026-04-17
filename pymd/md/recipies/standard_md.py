@@ -46,20 +46,13 @@ def initialise_system(mm: MDClass,
     """
     assert os.path.exists(path=path), f"Path {path} does not exist"
 
-    mm.set_minimisation(min_steps, steps_steepest=2000)
-    mm.set_restraints(restraint = "all_not_solvent")
-    mm.set_outputs(energy=1,restart=100, trajectory=0)
-    mm.build(input_file_name="min1.in",
-             input_structure="start.rst7",
-             output_file_name="min1.out",
-            run_path=path,
-            gpu=True)
+    
     
     mm.set_minimisation(min_steps, steps_steepest=2000)
     mm.set_outputs(energy=1,restart=100,trajectory=0)
-    mm.build(input_file_name="min2.in",
-             input_structure="min1.rst7",
-             output_file_name="min2.out",
+    mm.build(input_file_name="min2",
+             input_structure="min1.ncrst",
+             output_file_name="min2",
             run_path=path,
             gpu=True)
     
@@ -68,33 +61,33 @@ def initialise_system(mm: MDClass,
                 start_temperature=0,
                 end_temperature=temperature)
     mm.set_outputs(energy=1, restart=100, trajectory=int(heat_steps/10))
-    mm.build(input_file_name="heat.in",
-            input_structure="min2.rst7",
-            output_file_name="heat.out",
+    mm.build(input_file_name="heat",
+            input_structure="min2.ncrst",
+            output_file_name="heat",
             run_path=path,
             gpu=True)
 
     mm.set_nvt(steps=nvt_steps,
                temperature=temperature)
     mm.set_outputs(energy=10, restart=100, trajectory=int(nvt_steps/100))
-    mm.build(input_file_name="NVT1.in",
-            input_structure="heat.rst7",
-            output_file_name="NVT1.out",
+    mm.build(input_file_name="NVT1",
+            input_structure="heat.ncrst",
+            output_file_name="NVT1",
             run_path=path,
             gpu=True)
 
-    mm.set_npt(steps=nvt_steps,
+    mm.set_npt(steps=npt_steps,
                temperature=temperature,
                pressure=pressure)
     mm.set_outputs(energy=10, restart=100, trajectory=int(npt_steps/100))
-    mm.build(input_file_name="NPT1.in",
-            input_structure="NVT1.rst7",
-            output_file_name="NPT1.out",
+    mm.build(input_file_name="NPT1",
+            input_structure="NVT1.ncrst",
+            output_file_name="NPT1",
             run_path=path,
             gpu=True)
 
     if execute:
         for job in mm.jobs:
-            job.exe()
+            job.exe(gpu=True)
 
     return mm

@@ -1,11 +1,7 @@
 """
 This script should automatically run thermodynamic integration.
 """
-from  dataclasses import dataclass
-import os
-from posixpath import isfile
-import shutil
-from pprint import pprint
+
 
 from pymd.md.kernels.amber import Amber
 from pymd.md.recipies import thermodynamic_integration as TI
@@ -13,8 +9,6 @@ from pymd.md.recipies import standard_md, custom_recipies
 from pymd.md.utilities import cpptraj, leap
 from pymd.tools import io, pdb
 from pymd.tools.status_tracker import StatusTracker
-from pymd.md.md import MDClass
-from pymd.tools.slurm import Slurm
 
 # @dataclass
 class ConfigClass:

@@ -88,7 +88,9 @@ class Slurm:
     hpc_run_dir: str
     local_file_dir: str
     file_name: str = "sub.sh"
-
+    wait: bool = False
+    ping_time: int = 60
+    dependency: int|None = None
 
     def __init__(self,partition:str = "defq") -> None:
         """Initializes the job, by first selecting the partition
@@ -140,7 +142,7 @@ class Slurm:
         """Allocates the memory for the job.
 
         Args:
-            mem (int): Memory to allocate for the job.
+            mem (int): Memory to allocate for the job in GB.
         """
         assert mem <= self.partition.mem_per_node, \
             f"Memory {mem} exceeds max memory for partition {self.partition} on HPC {self.hpc}."
@@ -203,6 +205,8 @@ class Slurm:
             self.array_len = length
         self.array_file = array_file
 
+    def add_dependency(self, dependency:int):
+        self.dependency = dependency
 
     def gen_script(self, command:str)->str:
         """Generates the SLURM script for the job.
@@ -226,6 +230,8 @@ class Slurm:
             file += f"\n#SBATCH --gres=gpu:{self.gpus}"
         if self.array is True:
             file += f"\n#SBATCH --array=1-{self.array_len}"
+        if self.dependency is not None:
+            file += f"\n#SBATCH --dependency=afterany:{self.dependency}"
         file += "\n\n"
 
         if self.modules:
@@ -255,9 +261,11 @@ class Slurm:
         self.hpc_run_dir = hpc_file_path
         self.local_file_dir = local_file_path
 
-    def submit(self,
-               wait_for_finish: bool = False,
-               time_ping: int = 60) -> None:
+    def wait_for_finish(self, wait: bool, ping_time: int = 60) -> None:
+        self.wait = wait
+        self.ping_time = ping_time
+
+    def submit(self) -> None:
         """
         #TODO
 
@@ -268,19 +276,20 @@ class Slurm:
         Returns:
             SlurmJob: _description_
         """
+        
         self.hpc.sync(work_dir=self.local_file_dir, hpc_work_dir=self.hpc_run_dir, direction="forward")
         job_id = self.hpc.submit_slurm(path=self.hpc_run_dir, file=self.file_name)
         self.job = SlurmJob(name=self.name, job_id=job_id)
-        if wait_for_finish:
+        if self.wait:
             start = time.perf_counter()
             stop = time.perf_counter()
             finished = False
             while finished is False:
-                time.sleep(time_ping)
+                time.sleep(self.ping_time)
                 self.job.update_status(slurm_status=self.hpc.check_slurm_status(slurm_id=job_id))
                 print(f"INFO: Job status = {self.job.status}")
                 if self.job.status == "completed":
                     stop = time.perf_counter()
                     finished = True
             self.job.wall_time = stop - start
-            print(f"INFO: calculation took {self.job.wall_time} +- {time_ping} s")
+            print(f"INFO: calculation took {self.job.wall_time} +- {self.ping_time} s")

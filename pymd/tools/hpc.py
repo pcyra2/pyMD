@@ -142,6 +142,7 @@ class HPC:
         Returns:
             _type_: _description_
         """
+        print(f"INFO: Running command `ssh {self.username}@{self.login_node} {command}`")
         return subprocess.run(args=["ssh", f"{self.username}@{self.login_node}", command],
                        check=error_check, encoding="UTF-8",
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -165,7 +166,9 @@ class HPC:
             hpc_work_dir (str): _description_
         """
         print(f"INFO: Making directory `{hpc_work_dir}` on {self.name}")
-        _ = self._run_remote_command(command=f"mkdir {hpc_work_dir}", error_check=False)
+        out = self._run_remote_command(command=f"mkdir {hpc_work_dir}", error_check=False)
+        print(f"INFO: {out.stdout}")
+        print(f"INFO: {out.stderr}")
 
 
     def submit_slurm(self, path: str, file: str) -> int:

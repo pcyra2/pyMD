@@ -98,7 +98,7 @@ class MDJobClass:
         self.hpc = hpc
 
 
-    def exe(self, gpu: bool|None = None, hpc: Slurm|None = None) -> None:
+    def exe(self, gpu: bool|None = None, hpc: Slurm|None = None, dependency: int|None = None) -> None:
         """
         #TODO
 
@@ -112,6 +112,8 @@ class MDJobClass:
             self.to_cpu()
         if hpc is not None:
             self.hpc = hpc
+            if dependency is not None:
+                self.hpc.add_dependency(dependency=dependency)
         cpu_path = self.kernel.get_exe_path(gpu=False)
         if self.gpu and self.hpc is None:
             gpu_path = self.kernel.get_exe_path(gpu=True)
@@ -128,21 +130,29 @@ class MDJobClass:
                             output_file_name=self.outputfile_name,
                             gpu=self.gpu)
         if self.hpc is not None:
-            assert self.run_line == self.hpc.local_file_dir, \
-                "ERR: There is a mis-match between the cwd of the slurm object and the md job."
+            # assert self.run_line == self.hpc.local_file_dir, \
+            #     "ERR: There is a mis-match between the cwd of the slurm object and the md job."
 
             ## Generate slurm submission script
             slurm_script = self.hpc.gen_script(command=self.run_line)
             io.text_dump(text=slurm_script, path=os.path.join(self.run_path, self.hpc.file_name))
 
-            ## Sync the files, submit, and wait for end.
-            self.hpc.submit(wait_for_finish=True)
+            ## Generate input files
+            _ = self.kernel.exec(input_file_name=self.inputfile_name,
+                            output_file_name=self.outputfile_name,
+                            input_structure_name=self.input_structure,
+                            path=self.run_path,
+                            gpu=self.gpu,
+                            dry_run=True)
 
-            ## Sync the files back
-            self.hpc.hpc.sync(work_dir=self.run_path, hpc_work_dir=self.hpc.hpc_run_dir, direction="backward")
-            if self.hpc.job.status == "completed":
-                self.complete = True
-            self.wall_time = self.hpc.job.wall_time
+            ## Sync the files, submit, and wait for end.
+            self.hpc.submit()
+            if self.hpc.wait is True:
+                ## Sync the files back
+                self.hpc.hpc.sync(work_dir=self.run_path, hpc_work_dir=self.hpc.hpc_run_dir, direction="backward")
+                if self.hpc.job.status == "completed":
+                    self.complete = True
+                self.wall_time = self.hpc.job.wall_time
         else:
             start = time.perf_counter()
             output = self.kernel.exec(input_file_name=self.inputfile_name,
@@ -184,6 +194,7 @@ class MDClass:
             ) -> None:
         self.start_coordinates = start_coordinates
         self.parm_file = parm_file
+        self.jobs = []
     
 
     def add_HPC(self, hpc: Slurm) -> None:
@@ -364,4 +375,10 @@ class MDClass:
             gpu (bool): Whether to run the calculation on a GPU. 
             hpc (Slurm|None): Whether to assign a HPC object to the calculation. 
         """
+        raise NotImplementedError("Function not implemented by kernel.")
+    
+    def set_ti(self,
+            lam:float,
+            mbar: bool = False,
+            lambda_list: list[float] = []) -> None:
         raise NotImplementedError("Function not implemented by kernel.")

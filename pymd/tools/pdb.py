@@ -71,3 +71,5 @@ def get_protein_res_id_range(lines: list[str])->int:
             else:
                 current_residue_number = int(line[22:26].strip())
     return current_residue_number
+
+

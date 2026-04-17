@@ -24,7 +24,7 @@ class AmberConfig:
         ntpr (int): Frequency to write mdout energy
         ntwx (int): Frequency to write to mdcrd trajectory file
         ntwr (int): Frequency to update the restart file
-        ioutfm (int): Writes netCDF trajectories as binary
+        ioutfm (int): Writes netCDF trajectories as binary if 1, otherwise ASCII if 0.
         iwrap (int): Wraps the trajectories into the "primary box"
 
         ## Minimisation options
@@ -194,6 +194,7 @@ class AmberConfig:
             self.cut = self.cut
         else:
             self.cut = cutoff
+        self.ioutfm = self.ioutfm
 
     def clear_attribute(self, attribute: str) -> None:
         if hasattr(self, attribute) is True:
@@ -232,12 +233,12 @@ class AmberConfig:
             output_file_name = input_file_name
         if gpu:
             self._run_lines = f"pmemd.cuda -O -i {input_file_name}.in -p {self._param_file} -c {input_structure_name} -ref {input_structure_name} " \
-                + f"-o {output_file_name}.out -r {output_file_name}.rst7" \
+                + f"-o {output_file_name}.out -r {output_file_name}.ncrst" \
                 +f" -x {output_file_name}.nc"
  
         else:
             self._run_lines = f"sander -O -i {input_file_name}.in -p {self._param_file} -c {input_structure_name} -ref {input_structure_name} " \
-                + f" -o {output_file_name}.out -r {output_file_name}.rst7" \
+                + f" -o {output_file_name}.out -r {output_file_name}.ncrst" \
                 + f" -x {output_file_name}.nc"
         return self._run_lines
     
@@ -247,7 +248,8 @@ class AmberConfig:
             output_file_name: str,
             input_structure_name: str,
             gpu: bool = False,
-            path: str = "./") -> subprocess.CompletedProcess[bytes]:
+            path: str = "./",
+            dry_run: bool = False) -> subprocess.CompletedProcess[bytes]|None:
         """
         Runs the amber software as part of the script.
     
@@ -266,15 +268,19 @@ class AmberConfig:
         assert os.path.isfile(path = os.path.join(path, input_structure_name)), \
             f"Input structure file is not found: {input_structure_name}"
 
-        command = self._gen_runlines(input_file_name = input_file_name,
-                            input_structure_name = input_structure_name,
-                            output_file_name = output_file_name,
-                            gpu = gpu)
+        if dry_run:
+            return None
+        
+        else:
+            command = self._gen_runlines(input_file_name = input_file_name,
+                                input_structure_name = input_structure_name,
+                                output_file_name = output_file_name,
+                                gpu = gpu)
 
-        print(f"INFO: Running command: {command} in {path}")
 
-        output = subprocess.run(args = command.split(), cwd=path, check=True)
-        return output
+            print(f"INFO: Running command: {command} in {path}")
+            output = subprocess.run(args = command.split(), cwd=path, check=True)
+            return output
 
     def set_timestep(self, timestep: float) -> None:
         """
@@ -309,12 +315,17 @@ class AmberConfig:
             + f"steps, ({steps_total} not allowed)"
         if steps_steepest is None:
             steps_steepest = int(steps_total/2)
+        
+
         self.irest = 0
         self.imin = 1
         self.ntmin = 1
         self._minimisation = True
         self.ncyc = steps_steepest
         self.maxcyc = steps_total
+        if steps_steepest == steps_total:
+            self.ntmin = 2
+            self.clear_attribute("ncyc")
 
     def set_dynamics(self, steps: int, timestep:float = 0.002, shake: int = 1, timestep_units: str = "ps") -> None:
         """Changes the configuration to run a dynamics simulation
@@ -326,7 +337,7 @@ class AmberConfig:
         """
         self.imin = 0
         self._minimisation = False
-        self._update_timestep(timestep=timestep, timestep_units=timestep_units)
+        self.set_timestep(timestep=convert.time(timestep, in_unit=timestep_units, out_unit="ps"))
         self.ntc = shake
         self.ntf = shake
         self.nstlim = steps
@@ -374,6 +385,7 @@ class AmberConfig:
             restraint_wt (float, optional): Harmonic restraint weight. Defaults to 5.0.
         """
         if restraint_mask is not None:
+            print(f"INFO: Applying restraints with mask {restraint_mask} and weight {restraint_wt}")
             self.ntr = 1
             self.restraintmask = restraint_mask
             self.restraint_wt = restraint_wt
@@ -443,7 +455,7 @@ class AmberConfig:
         else:
             self.irest = 0
             self.ntx = 1
-            self.nmropt = 1
+            self.nmropt = 0
 
     def set_thermostat(self, thermostat: int|str|None) -> None:
         """Sets the thermostat for the simulation.
@@ -511,7 +523,8 @@ class AmberConfig:
             ensemble_int = 1
         elif ensemble == "npt":
             ensemble_int = 2
-        self.ntb = ensemble_int
+        if ensemble != "min":
+            self.ntb = ensemble_int
 
     def set_barostat(self, barostat: int|str) -> None:
         """Sets the barostat for the simulation
@@ -589,8 +602,8 @@ class AmberConfig:
             ti_mask_2: str,
             sc_mask_1: str,
             sc_mask_2: str,
-            lambda_list: list[float],
-            mbar: bool
+            mbar: bool = False,
+            lambda_list: list[float] = [],
             ) -> None:
         """
         #TODO
@@ -624,6 +637,9 @@ class AmberConfig:
                 lambda_str += f",{lam}"
             self.mbar_lambda = lambda_str
 
+    def set_vlim(self, vlim: float):
+        self.vlimit = vlim
+
 
     def set_lambda_value(self, lambda_value: float) -> None:
         """
@@ -633,6 +649,8 @@ class AmberConfig:
             lambda_value (float): _description_
         """
         self.clambda = lambda_value
+        self.ntf=1
+        self.ntc=2
 
 THERMOSTATS = dict(none = 0,
                    anderson = 2,

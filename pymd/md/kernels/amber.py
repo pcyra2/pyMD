@@ -16,6 +16,12 @@ class Amber(MDClass):
     defaults: AmberConfig
     config: AmberConfig
 
+    _sc_mask_1: str|None = None
+    _sc_mask_2: str|None = None
+    _ti_mask_1: str|None = None
+    _ti_mask_2: str|None = None
+
+
     def __init__(self,
             start_coordinates: str,
             parm_file: str,
@@ -52,7 +58,7 @@ class Amber(MDClass):
         """
         restraint_mask: str
         if restraint == "all_not_solvent":
-            restraint_mask  = "'!(WAT NA+ CL-)'",
+            restraint_mask  = "'!(WAT NA+ CL-)'"
         elif restraint == "protein":
             restraint_mask = f"':{self.protein_start}-{self.protein_end}'"
         elif restraint == "ligand":
@@ -65,7 +71,7 @@ class Amber(MDClass):
             restraint_mask = "'@CA,N,C'"
         else:
             raise ValueError(f"Unrecognised restraint {restraint}")
-
+        # print(f"INFO: Applying restraints with mask {restraint_mask} and weight {restraint_wt}")
         self.config.set_restraints(restraint_mask=restraint_mask,
                                    restraint_wt=restraint_wt)
 
@@ -144,6 +150,7 @@ class Amber(MDClass):
                                                                     in_unit="fs",
                                                                     out_unit="ps"))
         self.config.set_temperature(temperature=temperature)
+        self.config.restart_dynamics(True)
         if thermostat is not None:
             self.defaults.set_thermostat(thermostat = thermostat)
         self.config.set_thermostat(thermostat = self.defaults.ntt)
@@ -185,7 +192,7 @@ class Amber(MDClass):
                                                                     in_unit="fs",
                                                                     out_unit="ps"))
         self.config.set_temperature(temperature=temperature)
-        
+        self.config.restart_dynamics(True)
         if thermostat is not None:
             self.defaults.set_thermostat(thermostat = thermostat)
         self.config.set_thermostat(thermostat = self.defaults.ntt)
@@ -229,7 +236,8 @@ class Amber(MDClass):
             gpu (bool): Whether to run the calculation on a GPU. 
             hpc (Slurm|None): Whether to assign a HPC object to the calculation. 
         """
-        
+        if self._sc_mask_1 != None:
+            self.config.ntf = 1
         self.latest_job = MDJobClass(inputfile_name=input_file_name,
                 input_structure=input_structure,
                 outputfile_name=output_file_name,
@@ -241,3 +249,26 @@ class Amber(MDClass):
             self.add_HPC(hpc=hpc)
         self.jobs.append(self.latest_job)
         self._reset_config()
+
+
+    def init_ti(self,
+            scmask_1: str,
+            timask_1: str,
+            scmask_2: str,
+            timask_2: str) -> None:
+        self._sc_mask_1 = scmask_1
+        self._sc_mask_2 = scmask_2
+        self._ti_mask_1 = timask_1
+        self._ti_mask_2 = timask_2
+
+    def set_ti(self,
+            lam:float,
+            mbar: bool = False,
+            lambda_list: list[float] = []) -> None:
+        self.config.initialise_ti(ti_mask_1=self._ti_mask_1,
+                        ti_mask_2 = self._ti_mask_2,
+                        sc_mask_1 = self._sc_mask_1,
+                        sc_mask_2 = self._sc_mask_2,
+                        mbar=mbar,
+                        lambda_list=lambda_list)
+        self.config.set_lambda_value(lambda_value=lam)
