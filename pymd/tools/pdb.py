@@ -73,3 +73,39 @@ def get_protein_res_id_range(lines: list[str])->int:
     return current_residue_number
 
 
+def get_residue(lines: list[str], residue_number: int, chain: str = "A"):
+    for i, line in enumerate(iterable=lines):
+        if line.startswith('ATOM') or line.startswith('HETATM'):
+            current_residue_number = int(line[22:26].strip())
+            current_chain = line[21:22].strip()
+            if current_residue_number == residue_number and current_chain == chain:
+                residue_name = line[17:20].strip()
+                return residue_name
+            
+def get_mutant_structure(lines: list[str], delete_resid: int, replace_resid: int, chain: str = "A"):
+    # print(lines)
+    top_lines: int|None = None
+    bottom_lines: int = 0
+    middle_lines: int|None = None
+    for i, line in enumerate(iterable=lines):
+        if line.startswith('ATOM') or line.startswith('HETATM'):
+            current_residue_number = int(line[22:26].strip())
+            current_chain = line[21:22].strip()
+            if current_chain == "":
+                current_chain = chain
+            if current_residue_number == delete_resid and current_chain == chain:
+                if top_lines == None:
+                    top_lines = i - 1
+                    print(top_lines)
+                bottom_lines = i + 1
+                print(bottom_lines)
+            elif current_residue_number == replace_resid and current_chain == chain:
+                if middle_lines == None:
+                    middle_lines = i
+                print(middle_lines)
+                lines[i] = line[:20] + str(delete_resid).rjust(6) + line[26:]
+    
+    new_pdb = lines[:top_lines] + lines[middle_lines:-2] + lines[bottom_lines:middle_lines]
+    for line in lines[middle_lines:-2]:
+        print(line)
+    return new_pdb

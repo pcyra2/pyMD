@@ -4,9 +4,10 @@
 import copy
 import os
 import time
+import pandas
 
 from pymd.user_configs.amber_defaults import AmberConfig
-from pymd.tools import convert, io
+from pymd.tools import convert, io, plot
 import pymd.md.utilities.leap as PyLeap
 from pymd.tools.slurm import Slurm
 
@@ -25,12 +26,14 @@ class MDJobClass:
     wall_time: float
     gpu: bool = False
     hpc: Slurm|None = None
-
+    outfile_data: pandas.DataFrame
+    _outfile_analysis_lines: list[str] = []
+    
     def __init__(self,
                 inputfile_name: str,
                 input_structure: str,
                 outputfile_name:str,
-                run_path: str = "./"
+                run_path: str = "./",
                 ) -> None:
         """
         #TODO
@@ -46,7 +49,6 @@ class MDJobClass:
         self.complete = False
         self.input_structure = input_structure
         self.run_path = run_path
-
 
     def add_inputfile(self) -> None:
         """The inputfile as a list of lines
@@ -96,6 +98,9 @@ class MDJobClass:
             hpc (Slurm): _description_
         """
         self.hpc = hpc
+
+    def add_analysis_lines(self, outfile_analysis_lines: list[str], trajectory_analysis_lines: list[str]) -> None:
+        self._outfile_analysis_lines = outfile_analysis_lines
 
 
     def exe(self, gpu: bool|None = None, hpc: Slurm|None = None, dependency: int|None = None) -> None:
@@ -163,6 +168,8 @@ class MDJobClass:
             stop = time.perf_counter()
             self.complete = True
             self.wall_time = stop - start
+
+    
 
 
 class MDClass:
@@ -382,3 +389,19 @@ class MDClass:
             mbar: bool = False,
             lambda_list: list[float] = []) -> None:
         raise NotImplementedError("Function not implemented by kernel.")
+
+    def parse_outfile(self, file: str, variables: list[str], start_time: float=0, start_steps: int = 0) -> pandas.DataFrame:
+        raise NotImplementedError("Function not implemented by kernel.")
+    
+    def analyse(self, job_int: int = -1, save_data: bool = True, plot_fig: bool = False, save_fig: bool = False):
+        tmp = self.jobs[job_int]
+        mdout_data = self.parse_outfile(os.path.join(tmp.run_path, tmp.outputfile_name.replace(".out","")), tmp._outfile_analysis_lines) 
+        if save_data:
+            mdout_data.to_csv(os.path.join(self.jobs[job_int].run_path,f"{self.jobs[job_int].outputfile_name}_summary.csv"),
+                              index=False)
+        for i, var in enumerate(mdout_data.columns):
+            if i > 1:
+                if plot_fig:
+                    fig = plot.plot_df(mdout_data, "Steps", var)
+                    if save_fig:
+                        fig.write_image(os.path.join(self.jobs[job_int].run_path,f"{self.jobs[job_int].outputfile_name}_{var}.png"))

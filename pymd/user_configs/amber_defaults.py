@@ -3,6 +3,8 @@
 import shutil
 import subprocess
 import os
+import numpy
+import pandas
 
 from pymd.tools import convert, io
 
@@ -652,6 +654,8 @@ class AmberConfig:
         self.ntf=1
         self.ntc=2
 
+
+
 THERMOSTATS = dict(none = 0,
                    anderson = 2,
                    langevin = 3,
@@ -666,3 +670,15 @@ PRESSURE_SCALING = dict(none = 0,
 
 BAROSTATS = dict(berendsen = 1,
                 monte_carlo = 2)
+
+OUTPUTFILE_DATAFLAGS = dict(steps = "NSTEP",
+                        time = "TIME(PS)",
+                        temperature = "TEMP(K)",
+                        pressure = "PRESS",
+                        volume = "VOLUME",
+                        density = "Density",
+                        energy = "Etot",
+                        total_energy = "Etot",
+                        kinetic_energy = "EKtot",
+                        potential_energy = "EPtot",
+                        )

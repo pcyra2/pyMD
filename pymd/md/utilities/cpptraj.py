@@ -102,6 +102,7 @@ def run_cpptraj(
 def to_pdb(structure_file: str, parm_file: str, pdb_name: str, path: str = "./"):
     file = f"""parm {parm_file}
 trajin {structure_file}
+autoimage
 trajout {pdb_name}
 
 run

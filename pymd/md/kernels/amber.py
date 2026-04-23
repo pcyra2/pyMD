@@ -1,11 +1,15 @@
 """#TODO
 """
 import copy
+import pandas
+import numpy
+import os
+import re
 
 from pymd.md.md import MDClass, MDJobClass
 from pymd.tools.slurm import Slurm
-from pymd.user_configs.amber_defaults import AmberConfig
-from pymd.tools import convert
+from pymd.user_configs.amber_defaults import AmberConfig, OUTPUTFILE_DATAFLAGS
+from pymd.tools import convert, io
 
 
 
@@ -224,7 +228,7 @@ class Amber(MDClass):
             output_file_name: str,
             run_path: str,
             gpu: bool = False,
-            hpc: Slurm|None = None
+            hpc: Slurm|None = None,
             ) -> None:
         """Builds the config and converts into a Job with a kernel. 
         
@@ -272,3 +276,106 @@ class Amber(MDClass):
                         mbar=mbar,
                         lambda_list=lambda_list)
         self.config.set_lambda_value(lambda_value=lam)
+
+    def parse_outfile(self, file: str, variables: list[str], start_time: float=0, start_steps: int = 0) -> pandas.DataFrame:
+        # print(start_time)
+        # variables: list[str] = job._outfile_analysis_lines
+        data: list[str] = io.text_read(file)
+        # if job.kernel._minimisation == False:
+        #     if job.kernel.nstlim %job.kernel.ntpr == 0:
+        #         num_datapoints = int(job.kernel.nstlim /job.kernel.ntpr)+1
+        #     else:
+        #         num_datapoints = int(job.kernel.nstlim /job.kernel.ntpr) +2
+        # else:
+        #     num_datapoints = int(job.kernel.maxcyc/job.kernel.ntpr)
+        # df =  pandas.DataFrame(columns = variables)
+        # arr: numpy.ndarray = numpy.zeros(shape=[len(variables)+1, num_datapoints])
+        counter = -1
+        imin: int|None = None
+        steps: int|None = None
+        ntpr: int|None = None
+        num_datapoints: int|None = None
+        dt: int|None = None
+        for i, tmp in enumerate(variables):
+            if tmp in OUTPUTFILE_DATAFLAGS.keys():
+                variables[i] = OUTPUTFILE_DATAFLAGS[tmp]
+        # print(f"INFO: Extracting {variables} from the MD output files.")
+    
+
+        # if job.kernel._minimisation == False:
+        for i, line in enumerate(data):
+            if "imin" in line and imin is None:
+                imin = int(line.split("=")[1].strip(" ").strip(","))
+                for v, var in enumerate(variables):
+                    if "Etot" == var and imin == 1:
+                        variables[v] = "ENERGY"
+                    elif "ENERGY" == var and imin == 0:
+                        variables[v] = "Etot"
+            if imin == 0 and steps is None and "nstlim" in line:
+                steps = int(line.split("=")[1].strip(" ").strip(","))
+            if imin == 1 and steps is None and "maxcyc" in line:
+                steps = int(line.split("=")[1].strip(" ").strip(","))
+            if "ntpr" in line and ntpr is None:
+                ntpr = int(line.split("=")[1].strip(" ").strip(","))
+            if "dt" in line and dt is None:
+                dt = float(line.split("=")[1].strip(" ").strip(","))
+            if num_datapoints is None and steps is not None and ntpr is not None:
+                if steps % ntpr == 0:
+                    num_datapoints = int(steps /ntpr)+1
+                else:
+                    num_datapoints = int(steps /ntpr) +2
+                df =  pandas.DataFrame(columns = variables)
+                arr: numpy.ndarray = numpy.zeros(shape=[len(variables)+3, num_datapoints])
+            if "FINAL RESULTS" in line:
+                break
+            if "NSTEP" in line:
+                counter += 1
+                if counter >= num_datapoints:
+                    break
+                words =[x for x in re.split("\s+|=", line) if x != ""]
+                # arr[0, counter] = int(words[2])
+                for k, word in enumerate(words):
+                        if word == "NSTEP":
+                            if imin == 0:
+                                try:
+                                    arr[0, counter] = float(words[k+1])
+                                    arr[2,counter] = int(float(words[k+1]) + start_steps)
+                                    if imin == 0:
+                                        # print(str(float(words[k+1]) * dt + start_time))
+                                        arr[1, counter] = float((float(words[k+1]) * dt )+ start_time)
+                                except ValueError:
+                                    print(words)
+                                    quit()
+                            elif imin == 1:
+                                words_2 = data[i+1].split()
+                                try:
+                                    arr[0, counter] = float(words_2[k])
+                                    arr[2,counter] = int(int(words_2[k]) + start_steps)
+                                except ValueError:
+                                    print(words_2)
+                                    quit()
+                            break
+            for j, var in enumerate(variables):
+                if var in line:
+                    words = line.split()
+                    for k, word in enumerate(words):
+                        if var in ["NSTEP", "ENERGY", "RMS", "GMAX", "NAME", "NUMBER",] and imin == 1:
+                            if word == var:
+                                words_2 = data[i+1].split()
+                                arr[j+3, counter] = float(words_2[k])
+                                break
+                        elif word == var:
+                            arr[j+3, counter] = float(words[k+2])
+                            break
+        # else:
+        #     raise NotImplementedError
+        df = pandas.DataFrame()
+        df.insert(loc=0, column="Steps", value=arr[0])
+        df.insert(loc=1, column="TotalTime", value=arr[1])
+        df.insert(loc=2, column="TotalSteps", value=arr[2])
+        for i, var in enumerate(variables):
+            if imin == 1 and var == "ENERGY":
+                var = "Etot"
+            df.insert(i+3, var, arr[i+3])
+        df.drop(df.index[counter+1:], inplace=True) # Removes data where minimisation has ended early
+        return df
