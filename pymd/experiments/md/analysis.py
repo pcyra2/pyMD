@@ -1,5 +1,4 @@
 import argparse
-from audioop import rms
 import pandas
 import os
 from plotly.graph_objects import Figure

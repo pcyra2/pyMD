@@ -10,7 +10,8 @@ setup(
             "mdout = pymd.experiments.md.analysis:md_out_analysis",
             "rmsd = pymd.experiments.md.analysis:rmsd",
             "SinglePoint = pymd.experiments.qm.orca:single_point",
-            "Opt = pymd.experiments.qm.orca:optimise"
+            "Opt = pymd.experiments.qm.orca:optimise",
+            "plt_csv = pymd.experiments.analysis.plotter:csv_plotter"
         ],
     },
     install_requires=["pyscf", "rdkit", "spyrmsd", "matplotlib",

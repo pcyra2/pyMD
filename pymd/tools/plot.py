@@ -11,7 +11,11 @@ def plot_df(df: pandas.DataFrame,
     fig = graph_objects.Figure()
     for label in y_label:
         fig.add_trace(graph_objects.Scatter(x=df[x_label], y=df[label]))
-    fig.update_layout(template="simple_white")
+    fig.update_layout(template="simple_white", font=dict(
+        family="Ariel",
+        size=18,
+        color="black"
+    ))
     fig.update_xaxes(title_text=x_label)
     if len(y_label) == 1:
         fig.update_yaxes(title_text=y_label[0])
