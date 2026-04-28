@@ -1,0 +1,75 @@
+site_name: "pyMD Docs"
+
+theme:
+    name: "material" # material 
+    features:
+        - content.code.annotate
+        - content.code.copy
+        - content.code.select
+
+plugins:
+- search
+- autorefs
+- mkdocstrings:
+    handlers:
+      python:
+        options:
+          heading_level: 3
+          # sort: source
+          show_source: true
+          show_if_no_docstring: true
+          parameter_headings: true
+          show_root_heading: false
+          show_submodules: true
+          # show_object_type: true
+          # sort_members: source
+          
+- coverage:
+    page_name: coverage  # default
+    html_report_dir: coverage_rep  # default
+
+nav:
+    - Home: index.md
+    - Install: setup.md
+    - Configs:
+        - Amber: configs/amber.md
+        - Namd: configs/namd.md
+    - Tools:
+        - Generic Tools: tools/generic.md
+        - MD Tools: tools/md.md
+    # - pyBrellaSampling: 
+    #     - Overview: Umbrella/pyBrellaSampling.md
+    #     - Usage: Umbrella/usage.md
+    #     - User Inputs: Umbrella/Inputs.md
+    #     - Code: Umbrella/CodeReference.md
+    # - Standalone: 
+    #     - Overview: Standalone/Overview.md
+    #     - Usage: Standalone/usage.md
+    #     - Code: Standalone/CodeReference.md
+    #     - Examples: Standalone/Examples.md
+    # - Benchmark:
+    #     - Overview: Benchmark/Overview.md
+    #     - User Guide: Benchmark/UserGuide.md
+    # - User Variables: UserVars.md
+    - Testing: coverage.md
+
+repo_url: https://github.com/pcyra2/pyMD
+
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+        anchor_linenums: true
+        line_spans: __span
+        pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - toc:
+      toc_depth: 3

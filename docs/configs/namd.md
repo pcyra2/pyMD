@@ -1,0 +1,1 @@
+::: pymd.user_configs.namd_defaults.NamdConfig

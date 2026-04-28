@@ -19,5 +19,7 @@ setup(
                       "plotly", "pyscf-dispersion", "h5py",
                       "pytest", "pytest-cov", "pytest-html",
                       "pytest-subprocess", "numpy", "MDAnalysis",
-                      "kaleido"]
+                      "kaleido", "pandas", "mkdocs", "mkdocstrings",
+                      "mkdocs-material", "mkdocstrings-python", 
+                      "mkdocs-coverage", "mkdocs-material-extensions"]
 )
