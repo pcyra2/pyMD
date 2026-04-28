@@ -25,7 +25,7 @@ class MDJobClass:
     kernel: AmberConfig
     wall_time: float
     gpu: bool = False
-    hpc: Slurm|None = None
+    hpc: Slurm
     outfile_data: pandas.DataFrame
     _outfile_analysis_lines: list[str] = []
     
@@ -120,13 +120,13 @@ class MDJobClass:
             if dependency is not None:
                 self.hpc.add_dependency(dependency=dependency)
         cpu_path = self.kernel.get_exe_path(gpu=False)
-        if self.gpu and self.hpc is None:
+        if self.gpu and hasattr(self, 'hpc'):
             gpu_path = self.kernel.get_exe_path(gpu=True)
             if gpu_path is not None:
                 if gpu_path is None:
                     assert cpu_path is not None
                     self.to_cpu()
-        elif self.hpc is None:
+        elif hasattr(self, 'hpc') is False:
             assert cpu_path is not None
 
         self.run_line = self.kernel._gen_runlines(
@@ -134,7 +134,7 @@ class MDJobClass:
                             input_structure_name=self.input_structure,
                             output_file_name=self.outputfile_name,
                             gpu=self.gpu)
-        if self.hpc is not None:
+        if hasattr(self, 'hpc'): # if self.hpc is not None:
             # assert self.run_line == self.hpc.local_file_dir, \
             #     "ERR: There is a mis-match between the cwd of the slurm object and the md job."
 
@@ -169,8 +169,6 @@ class MDJobClass:
             self.complete = True
             self.wall_time = stop - start
 
-    
-
 
 class MDClass:
     """Class for handling the MD simulations. It contains job classes which can be used to handle 
@@ -194,6 +192,7 @@ class MDClass:
     protein_end: int
     cofactors: list[int]|int
     ligands: list[int]|int
+    config: AmberConfig # TODO add config class to handle this better.
 
     def __init__(self,
             start_coordinates: str,

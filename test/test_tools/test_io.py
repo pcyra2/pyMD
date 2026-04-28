@@ -56,5 +56,5 @@ def test_dict_io():
 
 def test_grep():
 	correct_example = io.text_read(os.path.join(FILE_LOC, "2BN.pdb"))
-	grepped = io.grep(os.path.join(FILE_LOC, "1N23.pdb"), "2BN")
+	grepped, _ = io.grep(os.path.join(FILE_LOC, "1N23.pdb"), "2BN", strip=False)
 	assert grepped == correct_example

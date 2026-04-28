@@ -7,6 +7,7 @@ setup(
     entry_points={
         'console_scripts': [
             "pTI = pymd.experiments.md.ti.experiment:main",
+            "pMD = pymd.experiments.md.replica_md.experiment:main",
             "mdout = pymd.experiments.md.analysis:md_out_analysis",
             "rmsd = pymd.experiments.md.analysis:rmsd",
             "SinglePoint = pymd.experiments.qm.orca:single_point",

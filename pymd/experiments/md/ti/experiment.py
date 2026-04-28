@@ -3,6 +3,7 @@ This script should automatically run thermodynamic integration.
 """
 import os
 import shutil
+import hashlib
 from dataclasses import dataclass
 
 from pymd.experiments.md.ti.helpers import recipies
@@ -56,13 +57,15 @@ def main() -> None:
     """
     Runs TI.
     """
+    hpc_path = os.path.join(config.hpc_base_path, hashlib.md5(os.getcwd().encode()).hexdigest())
     config()
     config.hpc.set_gpus(gpus=config.gpus)
     config.hpc.set_ntasks(tasks=config.cpus)
     config.hpc.set_mem(mem=20)
     config.hpc.set_modules(["cuda-12.2.2","amber-uon/gcc11.3.0/24" ])
-    config.hpc.define_dirs(local_file_path=config.run_dir, hpc_file_path=config.hpc_base_path)
-    # config.hpc.hpc.make_dir(config.hpc_base_path)
+    config.hpc.define_dirs(local_file_path=config.run_dir, hpc_file_path=hpc_path)
+    config.hpc.hpc.make_dir(hpc_path)
+    # config.hpc.hpc.make_dir(hpc_path)
 
     assert os.path.isdir(config.input_data_dir)
     STATUS = StatusTracker(file_path =  config.status_file)
@@ -131,21 +134,21 @@ def main() -> None:
         STATUS.add_stage(stage=stage, steps=["setup","mutate","equilibrate_protein", "equilibrate_complex"])
 
     mutation_path = os.path.join(config.run_dir, stage)
-    # config.hpc.hpc.make_dir(os.path.join(config.hpc_base_path, stage))
+    # config.hpc.hpc.make_dir(os.path.join(hpc_path, stage))
     mutation_setup_path = os.path.join(mutation_path,"setup")
     mutation_protein_path = os.path.join(mutation_path,"protein")
     mutation_complex_path = os.path.join(mutation_path,"complex")
 
     if STATUS.get_status(stage=stage, step="setup") != "complete":
         io.make_dir(path=mutation_path)
-        config.hpc.hpc.make_dir(hpc_work_dir=os.path.join(config.hpc_base_path, mutation_path))
+        config.hpc.hpc.make_dir(hpc_work_dir=os.path.join(hpc_path, mutation_path))
         
         io.make_dir(path=mutation_setup_path)
         io.make_dir(path=mutation_protein_path)
         io.make_dir(path=mutation_complex_path)
         
-        config.hpc.hpc.make_dir(hpc_work_dir=os.path.join(config.hpc_base_path, mutation_protein_path))
-        config.hpc.hpc.make_dir(hpc_work_dir=os.path.join(config.hpc_base_path, mutation_complex_path))
+        config.hpc.hpc.make_dir(hpc_work_dir=os.path.join(hpc_path, mutation_protein_path))
+        config.hpc.hpc.make_dir(hpc_work_dir=os.path.join(hpc_path, mutation_complex_path))
 
         if config.start_residue == pdb.get_residue(lines = io.text_read(path=os.path.join(config.input_data_dir, config.protein_pdb)),
                                                    residue_number=config.mutation_resid):
@@ -280,15 +283,15 @@ def main() -> None:
             path = mutation_complex_path
         else:
             raise ValueError("Invalid structure type")
-        # config.hpc.hpc.make_dir(os.path.join(config.hpc_base_path, path))
+        # config.hpc.hpc.make_dir(os.path.join(hpc_path, path))
         
         for lam in config.ti_windows:
             window_path = os.path.join(path, str(lam))
             step = f"equilibrate_{structure}_{lam}"
-            config.hpc.define_dirs(local_file_path=window_path, hpc_file_path=os.path.join(config.hpc_base_path, window_path))
+            config.hpc.define_dirs(local_file_path=window_path, hpc_file_path=os.path.join(hpc_path, window_path))
             if STATUS.get_status(stage=stage, step=step) == "Not Started":
-                config.hpc.hpc.make_dir(hpc_work_dir=os.path.join(config.hpc_base_path, window_path))
-                config.hpc.hpc.sync(work_dir=window_path, hpc_work_dir=os.path.join(config.hpc_base_path, window_path))
+                config.hpc.hpc.make_dir(hpc_work_dir=os.path.join(hpc_path, window_path))
+                config.hpc.hpc.sync(work_dir=window_path, hpc_work_dir=os.path.join(hpc_path, window_path))
                 io.make_dir(path=window_path)
                 shutil.copy(src=os.path.join(path, "ti_equil.ncrst"),
                         dst=os.path.join(window_path, "ti_equil.ncrst"))
@@ -312,7 +315,7 @@ def main() -> None:
                 stat = config.hpc.hpc.check_slurm_status(slurm_id=job_id)
                 print(f"INFO: Job {job_id} is {stat}.")
                 if stat == "CD":
-                    config.hpc.hpc.sync(work_dir=window_path, hpc_work_dir=os.path.join(config.hpc_base_path, window_path), direction="backward")
+                    config.hpc.hpc.sync(work_dir=window_path, hpc_work_dir=os.path.join(hpc_path, window_path), direction="backward")
                     if lam == 1.0 and structure == "complex":
                         cpptraj.strip(key=f"!:1-{protein_max_resid+1}",structure_file=f"{mm.jobs[-1].outputfile_name}.ncrst", parm_file=mm.parm_file, output="equilibrated_mutant.pdb", path=window_path )
                         pdb_file = io.text_read(os.path.join(window_path, "equilibrated_mutant.pdb"))   
@@ -326,7 +329,7 @@ def main() -> None:
             # STATUS.add_steps(stage=stage, steps=[prod_step])
             if STATUS.get_status(stage=stage, step=prod_step) == "Not Started":
                 mm.set_ti(lam=lam, mbar=True, lambda_list=config.ti_windows)
-                mm = recipies.prod_ti(mm=mm, path=window_path, start_structure="ti_equil.ncrst", outfile="prod1")
+                mm = recipies.prod_ti(mm=mm, path=window_path, start_structure="ti_equil.ncrst",temperature=config.temperature, outfile="prod1")
                 if STATUS.get_status(stage=stage, step=step) == "submitted": 
                     mm.jobs[-1].exe(hpc=config.hpc, dependency=int(STATUS.get_status(stage=stage, step = f"{step}_id")))
                 elif STATUS.get_status(stage=stage, step=step) == "complete":
@@ -344,7 +347,7 @@ def main() -> None:
                 stat = config.hpc.hpc.check_slurm_status(slurm_id=job_id)
                 print(f"INFO: Job {job_id} is {stat}.")
                 if stat == "CD":
-                    config.hpc.hpc.sync(work_dir=window_path, hpc_work_dir=os.path.join(config.hpc_base_path, window_path), direction="backward")
+                    config.hpc.hpc.sync(work_dir=window_path, hpc_work_dir=os.path.join(hpc_path, window_path), direction="backward")
                     STATUS.update_step(stage=stage, step=prod_step, status="complete" )
 
 if __name__ == "__main__":

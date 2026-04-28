@@ -25,13 +25,15 @@ PARAMETER_FILES: dict[str, str] = dict(
     gaff = "leaprc.gaff",
     gaff2 = "leaprc.gaff2")
 
-def gen_leap(ligand_name:str,
-            pdb_file:str,
+def gen_leap(protein_file:str,
+            ligand_name:str|None = None,
+            waters: str|None = None,
+            ions: str|None = None,
             parm_file: str = "complex.parm7",
             amber_coor: str = "complex.rst7",
             forcefield: str = "ff14SB",
             gaff: None|str = "gaff",
-            water: None|str = "tip3p",
+            water: None|str = "TIP3P",
             box: float = 12.0,
             extra_parms: list[str] = []
             ) -> str:
@@ -50,19 +52,31 @@ def gen_leap(ligand_name:str,
 
     for parm in extra_parms:
         file += f"source {PARAMETER_FILES[parm]}\n"
-
+    complex = "prot "
+    if ligand_name is not None:
+        complex += " lig"
+        file += f"""
+lig = loadmol2 {ligand_name}_ac.mol2
+loadamberparams {ligand_name}_ac.frcmod
+check lig"""
+    if waters is not None:
+        complex += " wat"
+        file += f"""
+wat = loadpdb {waters}
+check wat"""
+    if ions is not None:
+        complex += " ion"
+        file += f"""
+ion = loadpdb {ions}
+check ion"""
     file += f"""
-lig = loadmol2 {ligand_name}.mol2
-loadamberparams {ligand_name}.frcmod
-check lig
-
-prot = loadpdb {pdb_file}
+prot = loadpdb {protein_file}
 check prot
 
-complex = combine {"{"} prot lig {"}"}
+complex = combine {"{"} {complex} {"}"}
 solvateOct complex {water}BOX {box}
 addions complex Na+ 0
-savepdb complex complex.pdb
+savepdb complex {parm_file.replace(".parm7", ".pdb")}
 saveamberparm complex {parm_file} {amber_coor}
 quit"""
     return file

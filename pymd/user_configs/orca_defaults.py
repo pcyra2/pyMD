@@ -80,7 +80,7 @@ class OrcaConfig:
             line = f"* xyz {structure.charge} {structure.spin + 1}\n"
             
             if isinstance(structure, Molecule):
-                self._molecule = Molecule
+                self._molecule = structure
                 line += structure.print_coords()
             
             elif isinstance(structure, list[Atom]):
@@ -93,7 +93,7 @@ class OrcaConfig:
                 atoms = [Atom]*len(structure)
                 for i, l in enumerate(structure):
                     inf = l.split()
-                    atoms[i] = Atom(element=inf[0], x=inf[1], y=inf[2], z=inf[3])
+                    atoms[i] = Atom(element=inf[0], x=float(inf[1]), y=float(inf[2]), z=float(inf[3]))
                 self._molecule = Molecule().from_atoms_list(atoms=atoms, 
                                                             charge=self._charge,
                                                             spin=self._spin)

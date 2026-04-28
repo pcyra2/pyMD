@@ -114,7 +114,7 @@ class HPC:
         """
         if direction.casefold() == "forward":
             print(f"INFO: syncing {work_dir} to {self.login_node}:{hpc_work_dir}/.")
-            print(f"INFO: Running command: rsync -azP {work_dir}* " \
+            print(f"INFO: Running command: rsync -azP {work_dir}/* " \
                   + f"{self.username}@{self.login_node}:{hpc_work_dir}/. ")
 
             subprocess.run(["rsync", "-azP", f"{work_dir}/",
@@ -122,7 +122,7 @@ class HPC:
                             check=True)
             print("INFO: Data synced.")
 
-        elif direction.casefold() == "backward":
+        elif direction.casefold() == "backward" or direction.casefold() == "reverse":
             print(f"INFO: syncing {self.login_node}:{hpc_work_dir}/* to {work_dir}")
             print("INFO: Running command: rsync -azP " \
                   + f"{self.username}@{self.login_node}:{hpc_work_dir}/* .")

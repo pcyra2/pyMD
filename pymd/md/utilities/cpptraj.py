@@ -13,7 +13,7 @@ def extract_ligand(
         structure_file: str,
         resid: int,
         output_file: str,
-        path: str = "./") -> str:
+        path: str = "./") :
     """Uses cpptraj to extract a ligand. Strips all atoms that aren't the resid.
 
     Args:
@@ -22,6 +22,8 @@ def extract_ligand(
         resid (int): The residue ID of the ligand.
         output_file (str): The name of the output structure file. 
             This should contain the file extension.
+        path (str): The path to run the cpptraj calculation in. Defaults to `./`.
+    
     """
     file = f"""parm {parm_file}
 trajin {structure_file}
@@ -117,6 +119,15 @@ def strip(key: str,
         parm_file: str,
         output: str,
         path: str = "./"):
+    """Strips contents from a structure/trajectory file using cpptraj. This can be used to strip solvent from a trajectory for example.
+    
+    Args:
+        key (str): The cpptraj strip command to specify what to strip. For example, to strip solvent, this would be "WAT".
+        structure_file (str): The name of the structure/trajectory file to strip.
+        parm_file (str): The parameter file for the system.
+        output (str): The name of the output file after stripping.
+        path (str): The path to run the cpptraj calculation in. Defaults to `./`.
+    """
     file = f"""parm {parm_file}
 trajin {structure_file}
 strip {key}
