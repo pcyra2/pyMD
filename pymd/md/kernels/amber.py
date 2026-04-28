@@ -3,7 +3,6 @@
 import copy
 import pandas
 import numpy
-import os
 import re
 
 from pymd.md.md import MDClass, MDJobClass
@@ -14,22 +13,33 @@ from pymd.tools import convert, io
 
 
 class Amber(MDClass):
-    """#TODO
+    """MD Kernel for running an MD simulation in AMBER.
+
+    Attributes:
+        defaults (AmberConfig): Default configuration for the AMBER kernel.
+        config (AmberConfig): The current configuration for the AMBER kernel.
 
     """
     defaults: AmberConfig
     config: AmberConfig
 
-    _sc_mask_1: str|None = None
-    _sc_mask_2: str|None = None
-    _ti_mask_1: str|None = None
-    _ti_mask_2: str|None = None
+    _sc_mask_1: str
+    _sc_mask_2: str
+    _ti_mask_1: str
+    _ti_mask_2: str
 
 
     def __init__(self,
             start_coordinates: str,
             parm_file: str,
             config: AmberConfig = AmberConfig()) -> None:
+        """Initialises an AMBER system
+        
+        Args:
+            start_coordinates (str): The initial topology coordinates
+            parm_file (str): The parameter file
+            config (AmberConfig): The AMBER default variables. 
+        """
         super().__init__(start_coordinates = start_coordinates, parm_file = parm_file)
         self.defaults = copy.deepcopy(x = config)
         self.config = copy.deepcopy(x = config)
@@ -52,7 +62,9 @@ class Amber(MDClass):
         self.config.set_outputs(restart=restart, energy=energy, trajectory=trajectory)
 
 
-    def set_restraints(self, restraint: str = "all_not_solvent", restraint_wt: float = 5.0) -> None:
+    def set_restraints(self,
+            restraint: str = "all_not_solvent",
+            restraint_wt: float = 5.0) -> None:
         """
         Allows for simple restraints using ambers selection algebra
 
@@ -260,6 +272,14 @@ class Amber(MDClass):
             timask_1: str,
             scmask_2: str,
             timask_2: str) -> None:
+        """Sets the variables required for TI/FEP.
+        
+        Args:
+            scmask_1 (str): mask for the 1st soft core region.
+            timask_1 (str): mask for the 1st ti region. Usually identicle to scmask_1.
+            scmask_2 (str): mask for the 2nd soft core region.
+            timask_1 (str): mask for the 2nd ti region. Usually identicle to scmask_2.
+        """
         self._sc_mask_1 = scmask_1
         self._sc_mask_2 = scmask_2
         self._ti_mask_1 = timask_1
@@ -268,7 +288,16 @@ class Amber(MDClass):
     def set_ti(self,
             lam:float,
             mbar: bool = False,
-            lambda_list: list[float] = []) -> None:
+            lambda_list: list[float]|None = None) -> None:
+        """Sets the lambda and mbar values for a specific TI/FEP simulation.
+
+        Args:
+            lam (float): Value of lambda. Should be between 0 and 1
+            mbar (bool): Whether to also obtain mbar analysis. Defaults to False.
+            lambda_list (list[float]): List of lambda values that are used for the TI/FEP calculation.
+        """
+
+        assert 0<=lam<=1 , f"ERROR: Lambda must be between 0 and 1, not {lam}"
         self.config.initialise_ti(ti_mask_1=self._ti_mask_1,
                         ti_mask_2 = self._ti_mask_2,
                         sc_mask_1 = self._sc_mask_1,
@@ -277,25 +306,21 @@ class Amber(MDClass):
                         lambda_list=lambda_list)
         self.config.set_lambda_value(lambda_value=lam)
 
-    def parse_outfile(self, file: str, variables: list[str], start_time: float=0, start_steps: int = 0) -> pandas.DataFrame:
-        # print(start_time)
-        # variables: list[str] = job._outfile_analysis_lines
+    def parse_outfile(self,
+            file: str,
+            variables: list[str],
+            start_time: float = 0,
+            start_steps: int = 0) -> pandas.DataFrame:
+        """#TODO
+        """
         data: list[str] = io.text_read(file)
-        # if job.kernel._minimisation == False:
-        #     if job.kernel.nstlim %job.kernel.ntpr == 0:
-        #         num_datapoints = int(job.kernel.nstlim /job.kernel.ntpr)+1
-        #     else:
-        #         num_datapoints = int(job.kernel.nstlim /job.kernel.ntpr) +2
-        # else:
-        #     num_datapoints = int(job.kernel.maxcyc/job.kernel.ntpr)
-        # df =  pandas.DataFrame(columns = variables)
-        # arr: numpy.ndarray = numpy.zeros(shape=[len(variables)+1, num_datapoints])
         counter = -1
         imin: int|None = None
         steps: int|None = None
         ntpr: int|None = None
         num_datapoints: int|None = None
-        dt: int|None = None
+        arr: numpy.ndarray|None = None
+        dt: float|None = None
         for i, tmp in enumerate(variables):
             if tmp in OUTPUTFILE_DATAFLAGS.keys():
                 variables[i] = OUTPUTFILE_DATAFLAGS[tmp]
@@ -303,6 +328,7 @@ class Amber(MDClass):
     
 
         # if job.kernel._minimisation == False:
+        start_line = None
         for i, line in enumerate(data):
             if "imin" in line and imin is None:
                 imin = int(line.split("=")[1].strip(" ").strip(","))
@@ -326,6 +352,15 @@ class Amber(MDClass):
                     num_datapoints = int(steps /ntpr) +2
                 df =  pandas.DataFrame(columns = variables)
                 arr: numpy.ndarray = numpy.zeros(shape=[len(variables)+3, num_datapoints])
+                start_line = i
+                break
+        assert start_line is not None
+        assert num_datapoints is not None
+        assert arr is not None
+        assert dt is not None
+        
+
+        for i, line in enumerate(data[start_line:]):
             if "FINAL RESULTS" in line:
                 break
             if "NSTEP" in line:
@@ -335,26 +370,26 @@ class Amber(MDClass):
                 words =[x for x in re.split("\s+|=", line) if x != ""]
                 # arr[0, counter] = int(words[2])
                 for k, word in enumerate(words):
-                        if word == "NSTEP":
-                            if imin == 0:
-                                try:
-                                    arr[0, counter] = float(words[k+1])
-                                    arr[2,counter] = int(float(words[k+1]) + start_steps)
-                                    if imin == 0:
-                                        # print(str(float(words[k+1]) * dt + start_time))
-                                        arr[1, counter] = float((float(words[k+1]) * dt )+ start_time)
-                                except ValueError:
-                                    print(words)
-                                    quit()
-                            elif imin == 1:
-                                words_2 = data[i+1].split()
-                                try:
-                                    arr[0, counter] = float(words_2[k])
-                                    arr[2,counter] = int(int(words_2[k]) + start_steps)
-                                except ValueError:
-                                    print(words_2)
-                                    quit()
-                            break
+                    if word == "NSTEP":
+                        if imin == 0:
+                            try:
+                                arr[0, counter] = float(words[k+1])
+                                arr[2,counter] = int(float(words[k+1]) + start_steps)
+                                if imin == 0:
+                                    # print(str(float(words[k+1]) * dt + start_time))
+                                    arr[1, counter] = float((float(words[k+1]) * dt )+ start_time)
+                            except ValueError:
+                                print(words)
+                                quit()
+                        elif imin == 1:
+                            words_2 = data[i+1].split()
+                            try:
+                                arr[0, counter] = float(words_2[k])
+                                arr[2,counter] = int(int(words_2[k]) + start_steps)
+                            except ValueError:
+                                print(words_2)
+                                quit()
+                        break
             for j, var in enumerate(variables):
                 if var in line:
                     words = line.split()

@@ -3,8 +3,7 @@
 import shutil
 import subprocess
 import os
-import numpy
-import pandas
+
 
 from pymd.tools import convert, io
 
@@ -605,7 +604,7 @@ class AmberConfig:
             sc_mask_1: str,
             sc_mask_2: str,
             mbar: bool = False,
-            lambda_list: list[float] = [],
+            lambda_list: list[float]|None = None,
             ) -> None:
         """
         #TODO
@@ -632,6 +631,7 @@ class AmberConfig:
         # set vlim=20 in the first heaing step?
 
         if mbar:
+            assert isinstance(lambda_list, list)
             self.ifmbar = 1
             self.mbar_states = len(lambda_list)
             lambda_str = str(lambda_list[0])

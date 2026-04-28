@@ -13,7 +13,7 @@ def extract_ligand(
         structure_file: str,
         resid: int,
         output_file: str,
-        path: str = "./") :
+        path: str = "./")  -> None:
     """Uses cpptraj to extract a ligand. Strips all atoms that aren't the resid.
 
     Args:
