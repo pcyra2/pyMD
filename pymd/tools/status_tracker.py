@@ -22,7 +22,10 @@ class StageData:
         return {key:value for key, value in vars(self).items() if not key.startswith('_')}
 
     def get_status(self, step: str) -> str:
-        return getattr(self, step)
+        if hasattr(self, step):
+            return getattr(self, step)
+        else:
+            return "Not Started"
     
     def attach_slurm(self, step: str, slurm_job_id: str) -> None:
         setattr(self, f"{step}_id", slurm_job_id)
@@ -68,8 +71,11 @@ class StatusTracker:
             setattr(self, stage, sd)
 
     def get_status(self, stage: str, step: str) -> str:
-        stg: StageData =  getattr(self, stage)
-        return stg.get_status(step=step)
+        if hasattr(self, stage):
+            stg: StageData =  getattr(self, stage)
+            return stg.get_status(step=step)
+        else:
+            return "Not Started"
 
     def attach_slurm(self, stage: str, step: str, slurm_job_id: str) -> None:
         stage_data: StageData = getattr(self, stage)

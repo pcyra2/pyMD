@@ -349,6 +349,13 @@ def main() -> None:
                 if stat == "CD":
                     config.hpc.hpc.sync(work_dir=window_path, hpc_work_dir=os.path.join(hpc_path, window_path), direction="backward")
                     STATUS.update_step(stage=stage, step=prod_step, status="complete" )
+            anal_step = f"prod1_{structure}_{lam}_anal"
+            if STATUS.get_status(stage=stage, step=prod_step) == "complete": 
+                if STATUS.get_status(stage=stage, step=anal_step) == "Not Started":
+                    
+
+
+        
 
 if __name__ == "__main__":
     main()
