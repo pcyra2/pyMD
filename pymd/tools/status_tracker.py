@@ -23,6 +23,9 @@ class StageData:
 
     def get_status(self, step: str) -> str:
         return getattr(self, step)
+    
+    def attach_slurm(self, step: str, slurm_job_id: str) -> None:
+        setattr(self, f"{step}_id", slurm_job_id)
 
 class StatusTracker:
     _file_path: str
@@ -50,9 +53,9 @@ class StatusTracker:
     def _to_dict(self):
         return {key:value._to_dict() for key, value in vars(self).items() if not key.startswith('_')}
     
-    def update_step(self, stage: str, step: str, status: str) -> None:
+    def update_step(self, stage: str, step: str, status: str|int) -> None:
         stage_data: StageData = getattr(self, stage)
-        stage_data.update_step(step=step, status=status)
+        stage_data.update_step(step=step, status=str(status))
         setattr(self, stage, stage_data)
         io.json_dump(data=self._to_dict(), path=self._file_path)
 
@@ -67,3 +70,8 @@ class StatusTracker:
     def get_status(self, stage: str, step: str) -> str:
         stg: StageData =  getattr(self, stage)
         return stg.get_status(step=step)
+
+    def attach_slurm(self, stage: str, step: str, slurm_job_id: str) -> None:
+        stage_data: StageData = getattr(self, stage)
+        stage_data.attach_slurm(slurm_job_id)
+        setattr(self, stage, stage_data)

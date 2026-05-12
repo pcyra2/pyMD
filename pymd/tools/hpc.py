@@ -114,7 +114,7 @@ class HPC:
         """
         if direction.casefold() == "forward":
             print(f"INFO: syncing {work_dir} to {self.login_node}:{hpc_work_dir}/.")
-            print(f"INFO: Running command: rsync -azP {work_dir}* " \
+            print(f"INFO: Running command: rsync -azP {work_dir}/* " \
                   + f"{self.username}@{self.login_node}:{hpc_work_dir}/. ")
 
             subprocess.run(["rsync", "-azP", f"{work_dir}/",
@@ -122,7 +122,7 @@ class HPC:
                             check=True)
             print("INFO: Data synced.")
 
-        elif direction.casefold() == "backward":
+        elif direction.casefold() == "backward" or direction.casefold() == "reverse":
             print(f"INFO: syncing {self.login_node}:{hpc_work_dir}/* to {work_dir}")
             print("INFO: Running command: rsync -azP " \
                   + f"{self.username}@{self.login_node}:{hpc_work_dir}/* .")
@@ -142,6 +142,7 @@ class HPC:
         Returns:
             _type_: _description_
         """
+        print(f"INFO: Running command `ssh {self.username}@{self.login_node} {command}`")
         return subprocess.run(args=["ssh", f"{self.username}@{self.login_node}", command],
                        check=error_check, encoding="UTF-8",
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -165,7 +166,9 @@ class HPC:
             hpc_work_dir (str): _description_
         """
         print(f"INFO: Making directory `{hpc_work_dir}` on {self.name}")
-        _ = self._run_remote_command(command=f"mkdir {hpc_work_dir}", error_check=False)
+        out = self._run_remote_command(command=f"mkdir {hpc_work_dir}", error_check=False)
+        print(f"INFO: {out.stdout}")
+        print(f"INFO: {out.stderr}")
 
 
     def submit_slurm(self, path: str, file: str) -> int:

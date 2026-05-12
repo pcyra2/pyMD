@@ -1,7 +1,7 @@
 """#TODO
 """
 
-from pymd.tools.convert import time
+from pymd.tools import convert
 
 
 class NamdConfig:
@@ -153,38 +153,70 @@ class NamdConfig:
     _minimisation: bool = False
 
 
-    def __init__(self) -> None:
+    def __init__(self, cutoff: float|None = None) -> None:
+        if cutoff is None:
+            self.cut = self.cut
+        else:
+            self.cut = cutoff
+
+    def clear_attribute(self, attribute: str) -> None:
+        if hasattr(self, attribute) is True:
+            try:
+                delattr(self, attribute)
+            except AttributeError:
+                pass
+
+    def set_attribute(self, attribute: str, value: str|float|int) -> None:
+        setattr(self, attribute, value)
+
+
+    def get_exe_path(self, gpu: bool) -> str|None:
+        if gpu:
+            return self._GPUPath
+        else:
+            return self._CPUPath
+
+
+    def _gen_runlines(self, 
+            input_file_name: str,
+            output_file_name: str|None = None,
+            cores: int = 1,
+            gpu: bool = False) -> str:
+        if output_file_name is None:
+            output_file_name = input_file_name
+        if gpu:
+            return f"{self._GPUPath} +p{cores} +setcpuaffinity +devices 0 {input_file_name}.in > {output_file_name}.log"
+        else:
+            return f"{self._GPUPath} +p{cores} +setcpuaffinity {input_file_name}.in > {output_file_name}.log"
+
+    def exec(self):
         pass
 
-
-    def to_dict(self)->dict:
-        """Returns a dictionary of the class attributes"""
-        return {key:value for key, value in vars(self).items() if not key.startswith('_')}
-
-
-    def set_timestep(self, timestep: float, units = "fs") -> None:
+    def set_timestep(self,
+            timestep: float,
+            units: str = "fs") -> None:
         assert timestep > 0, f"ERROR: Cannot have a negative timestep: {timestep} not allowed"
-        self.timestep = timestep
+        self.timestep = convert.time(in_time=timestep, in_unit=units, out_unit="fs")
 
-
-    def set_minimisation(self, steps_total: int) -> None:
+    def set_minimisation_variables(self,
+            steps_total: int) -> None:
         assert steps_total > 0, "ERROR: Cannot have a negative number of minimisation steps."
         self.minimize = steps_total
         self._minimisation = True
 
-    def set_dynamics(self, timestep: float, shake: str, timestep_units: str) -> None:
+    def set_dynamics(self,
+            steps: int,
+            timestep: float,
+            shake: str,
+            timestep_units: str
+            ) -> None:
         self.set_timestep(timestep=timestep, units=timestep_units)
         assert shake in SHAKE_VARIABLES
+        self.run = steps
         if shake != "none":
             self.rigidBonds = shake
             self.rigidIterations = self.rigidIterations
             self.rigidTolerance = self.rigidTolerance
-
-    def set_outputs(self, energy: int, restart: int, trajectory: int) -> None:
-        self.outputEnergies = energy
-        self.outputTiming = energy
-        self.DCDfreq = trajectory
-        self.restartfreq = restart
 
     def _check_timestep_compatibility(self) -> bool:
         """Checks that the timestep and the shake are compatible with each other
@@ -198,5 +230,34 @@ class NamdConfig:
             return True
         else:
             return False
+
+    def to_dict(self)->dict:
+        """Returns a dictionary of the class attributes"""
+        return {key:value for key, value in vars(self).items() if not key.startswith('_')}
+
+    def set_outputs(self,
+            energy: int,
+            restart: int,
+            trajectory: int
+            ) -> None:
+        self.outputEnergies = energy
+        self.outputTiming = energy
+        self.DCDfreq = trajectory
+        self.restartfreq = restart
+
+    def set_restraints(self,):
+        pass
+
+    def set_temperature(self,):
+        pass
+
+    def set_heating(self,):
+        pass
+
+    def restart_dynamics(self,):
+        pass
+
+    
+    
         
 SHAKE_VARIABLES = ["none", "water", "all"]

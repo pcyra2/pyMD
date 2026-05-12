@@ -1,6 +1,6 @@
 import pymd.md.recipies.standard_md as standard_md
 import pymd.tools.io as io
-from pymd.md.md import MDClass
+from pymd.md.kernels.amber import Amber
 
 from pprint import pprint
 import pytest
@@ -16,15 +16,15 @@ def test_initialisation(fp):
     io.text_dump("", os.path.join(temp_dir, "start.rst7") )
     io.text_dump("", os.path.join(temp_dir, "complex.parm7") )
     fp.register(command=commands, stdout="This command was run", )
-    MM = MDClass("AMBER")
-    MM.set_parmfile("complex.parm7")
+    MM = Amber(start_coordinates="complex.rst7",
+               parm_file="complex.parm7")
     MM.define_hardware(cpu=12)
 
     MM = standard_md.initialise_system(MM, path=temp_dir)
 
     pprint(vars(MM))
-    pprint((MM.jobs[0].kernel.config.to_dict()))
-    pprint((MM.jobs[1].kernel.config.to_dict()))
+    pprint((MM.jobs[0].kernel.to_dict()))
+    pprint((MM.jobs[1].kernel.to_dict()))
     assert len(MM.jobs) == 5
     for job in MM.jobs:
         assert job.complete == False # Jobs should not have been run

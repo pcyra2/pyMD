@@ -1,8 +1,12 @@
 """#TODO
 """
-import os
 import shutil
-import pymd.tools.convert as convert
+import subprocess
+import os
+
+
+from pymd.tools import convert, io
+
 
 
 class AmberConfig:
@@ -21,7 +25,7 @@ class AmberConfig:
         ntpr (int): Frequency to write mdout energy
         ntwx (int): Frequency to write to mdcrd trajectory file
         ntwr (int): Frequency to update the restart file
-        ioutfm (int): Writes netCDF trajectories as binary
+        ioutfm (int): Writes netCDF trajectories as binary if 1, otherwise ASCII if 0.
         iwrap (int): Wraps the trajectories into the "primary box"
 
         ## Minimisation options
@@ -97,8 +101,8 @@ class AmberConfig:
         mbar_lambda (str): A list of comma sepparated floats defining the lambda windows
             e.g. `0.0, 0.2, 0.4, 0.6, 0.8, 1.0,`
     """
-    _GPUPath: str = shutil.which("pmemd.cuda") # Path to the GPU binary of AMBER
-    _CPUPath: str = shutil.which("sander") # Path to the CPU binary of AMBER
+    _GPUPath: str|None = shutil.which("pmemd.cuda") # Path to the GPU binary of AMBER
+    _CPUPath: str|None = shutil.which("sander") # Path to the CPU binary of AMBER
 
     ## IO options
     ntpr: int = 100 # Frequency to write mdout energy
@@ -158,6 +162,7 @@ class AmberConfig:
     _output_file_name: str
     _param_file: str
     _input_coord_file: str
+    _run_lines: str
 
     ## Thermodynamic Integration config
     icfe: int = 0 # whether to do a free energy calculation. 0 = No, 1 = Yes
@@ -190,7 +195,93 @@ class AmberConfig:
             self.cut = self.cut
         else:
             self.cut = cutoff
+        self.ioutfm = self.ioutfm
 
+    def clear_attribute(self, attribute: str) -> None:
+        if hasattr(self, attribute) is True:
+            try:
+                delattr(self, attribute)
+            except AttributeError:
+                pass
+
+    def set_attribute(self, attribute: str, value: str|float|int) -> None:
+        setattr(self, attribute, value)
+
+
+    def get_exe_path(self, gpu: bool) -> str|None:
+        if gpu:
+            return self._GPUPath
+        else:
+            return self._CPUPath
+
+
+    def _gen_runlines(
+            self,
+            input_file_name: str,
+            input_structure_name: str,
+            output_file_name: str|None = None,
+            gpu: bool = False) -> str:
+        """Generates the command that runs the AMBER calculation
+
+        Args:
+            input_file_name (str): input file name without the extension.
+            input_structure_name (str): Name of coordinate file that the simulation starts from.
+            output_file_name (str): Name of output file. Defaults to None, in which case it is 
+                the same as input_file_name. Defaults to None.
+            gpu (bool): Whether to use the gpu or not. Defaults to False (sander).
+        """
+        if output_file_name is None:
+            output_file_name = input_file_name
+        if gpu:
+            self._run_lines = f"pmemd.cuda -O -i {input_file_name}.in -p {self._param_file} -c {input_structure_name} -ref {input_structure_name} " \
+                + f"-o {output_file_name}.out -r {output_file_name}.ncrst" \
+                +f" -x {output_file_name}.nc"
+ 
+        else:
+            self._run_lines = f"sander -O -i {input_file_name}.in -p {self._param_file} -c {input_structure_name} -ref {input_structure_name} " \
+                + f" -o {output_file_name}.out -r {output_file_name}.ncrst" \
+                + f" -x {output_file_name}.nc"
+        return self._run_lines
+    
+    def exec(
+            self,
+            input_file_name: str,
+            output_file_name: str,
+            input_structure_name: str,
+            gpu: bool = False,
+            path: str = "./",
+            dry_run: bool = False) -> subprocess.CompletedProcess[bytes]|None:
+        """
+        Runs the amber software as part of the script.
+    
+        Args:
+            input (str): Base name of input file
+            output (str): Base name of output files
+            gpu (bool): Whether to use GPU or not. Defaults to False
+            path (str): Where to run the calculation. Defaults to ./
+
+        Returns:
+            outlines (str): The CLI output from runnning the command.
+        """
+        inputfile = self.gen_input_file(filename = input_file_name)
+        io.text_dump(inputfile, os.path.join(path, f"{input_file_name}.in"))
+
+        assert os.path.isfile(path = os.path.join(path, input_structure_name)), \
+            f"Input structure file is not found: {input_structure_name}"
+
+        if dry_run:
+            return None
+        
+        else:
+            command = self._gen_runlines(input_file_name = input_file_name,
+                                input_structure_name = input_structure_name,
+                                output_file_name = output_file_name,
+                                gpu = gpu)
+
+
+            print(f"INFO: Running command: {command} in {path}")
+            output = subprocess.run(args = command.split(), cwd=path, check=True)
+            return output
 
     def set_timestep(self, timestep: float) -> None:
         """
@@ -212,7 +303,7 @@ class AmberConfig:
         assert timestep > 0, f"ERROR: Cannot have a negative timestep: {timestep} not allowed"
         self.dt = timestep
 
-    def set_minimisation(self, steps_total: int, steps_steepest: int|None = None) -> None:
+    def set_minimisation_variables(self, steps_total: int, steps_steepest: int|None = None) -> None:
         """Changes the configuration to run a minimisation rather than a dynamics simulation
 
         Args:
@@ -225,14 +316,19 @@ class AmberConfig:
             + f"steps, ({steps_total} not allowed)"
         if steps_steepest is None:
             steps_steepest = int(steps_total/2)
+        
+
         self.irest = 0
         self.imin = 1
         self.ntmin = 1
         self._minimisation = True
         self.ncyc = steps_steepest
         self.maxcyc = steps_total
+        if steps_steepest == steps_total:
+            self.ntmin = 2
+            self.clear_attribute("ncyc")
 
-    def set_dynamics(self, timestep:float = 0.002, shake: int = 1, timestep_units: str = "ps") -> None:
+    def set_dynamics(self, steps: int, timestep:float = 0.002, shake: int = 1, timestep_units: str = "ps") -> None:
         """Changes the configuration to run a dynamics simulation
         
         Args:
@@ -242,18 +338,15 @@ class AmberConfig:
         """
         self.imin = 0
         self._minimisation = False
-        self._update_timestep(timestep=timestep, timestep_units=timestep_units)
+        self.set_timestep(timestep=convert.time(timestep, in_unit=timestep_units, out_unit="ps"))
         self.ntc = shake
         self.ntf = shake
+        self.nstlim = steps
         if self._check_timestep_compatibility() is False:
             self.ntc = 2
             self.ntf = 2
         for at in ["ncyc", "maxcyc", "ntmin"]:
-            try:
-                delattr(self, at)
-            except AttributeError:
-                pass
-
+            self.clear_attribute(attribute=at)
 
     def _check_timestep_compatibility(self) -> bool:
         """Checks that the timestep and the shake are compatible with each other
@@ -267,10 +360,6 @@ class AmberConfig:
             return True
         else:
             return False
-
-    def _update_timestep(self, timestep: float = 0.002, timestep_units: str = "ps") -> None:
-        
-        self.dt = convert.time(in_time=timestep, in_unit=timestep_units, out_unit="ps")
 
     def to_dict(self)->dict:
         """Returns a dictionary of the class attributes"""
@@ -297,6 +386,7 @@ class AmberConfig:
             restraint_wt (float, optional): Harmonic restraint weight. Defaults to 5.0.
         """
         if restraint_mask is not None:
+            print(f"INFO: Applying restraints with mask {restraint_mask} and weight {restraint_wt}")
             self.ntr = 1
             self.restraintmask = restraint_mask
             self.restraint_wt = restraint_wt
@@ -366,7 +456,7 @@ class AmberConfig:
         else:
             self.irest = 0
             self.ntx = 1
-            self.nmropt = 1
+            self.nmropt = 0
 
     def set_thermostat(self, thermostat: int|str|None) -> None:
         """Sets the thermostat for the simulation.
@@ -434,7 +524,8 @@ class AmberConfig:
             ensemble_int = 1
         elif ensemble == "npt":
             ensemble_int = 2
-        self.ntb = ensemble_int
+        if ensemble != "min":
+            self.ntb = ensemble_int
 
     def set_barostat(self, barostat: int|str) -> None:
         """Sets the barostat for the simulation
@@ -479,7 +570,6 @@ class AmberConfig:
         Returns:
             list[str]: The lines of the input file to write
         """
-
         header = f"{filename} Generated by pyMD, CopyRight (C) 2026 Ross Amory\n&cntrl"
         config = self.to_dict()
         body = [f"  {key}={value}," for key, value in config.items()]
@@ -513,8 +603,8 @@ class AmberConfig:
             ti_mask_2: str,
             sc_mask_1: str,
             sc_mask_2: str,
-            lambda_list: list[float],
-            mbar: bool
+            mbar: bool = False,
+            lambda_list: list[float]|None = None,
             ) -> None:
         """
         #TODO
@@ -541,12 +631,16 @@ class AmberConfig:
         # set vlim=20 in the first heaing step?
 
         if mbar:
+            assert isinstance(lambda_list, list)
             self.ifmbar = 1
             self.mbar_states = len(lambda_list)
             lambda_str = str(lambda_list[0])
             for lam in lambda_list[1:]:
                 lambda_str += f",{lam}"
             self.mbar_lambda = lambda_str
+
+    def set_vlim(self, vlim: float):
+        self.vlimit = vlim
 
 
     def set_lambda_value(self, lambda_value: float) -> None:
@@ -557,6 +651,10 @@ class AmberConfig:
             lambda_value (float): _description_
         """
         self.clambda = lambda_value
+        self.ntf=1
+        self.ntc=2
+
+
 
 THERMOSTATS = dict(none = 0,
                    anderson = 2,
@@ -572,3 +670,15 @@ PRESSURE_SCALING = dict(none = 0,
 
 BAROSTATS = dict(berendsen = 1,
                 monte_carlo = 2)
+
+OUTPUTFILE_DATAFLAGS = dict(steps = "NSTEP",
+                        time = "TIME(PS)",
+                        temperature = "TEMP(K)",
+                        pressure = "PRESS",
+                        volume = "VOLUME",
+                        density = "Density",
+                        energy = "Etot",
+                        total_energy = "Etot",
+                        kinetic_energy = "EKtot",
+                        potential_energy = "EPtot",
+                        )

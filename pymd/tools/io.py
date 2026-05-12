@@ -126,16 +126,18 @@ def remove_dir(path: str, force: bool = True) -> None:
         else:
             shutil.rmtree(path=path)
 
-def grep(file: str, string: str) -> list[str]:
+def grep(file: str, string: str, strip: bool = False) -> list[str]:
     """
     a function that should act like the bash 'grep' command.
 
     Args:
         file (str): File to grep.
         string (str): Pattern to grep.
+        strip (bool): Whether to strip the grep lines from the original file working like `grep -v`
 
     Returns:
         lines (list[str]): Lines containing grep pattern.
+        contents (list[str]): Lines that do not contain grep pattern if strip == True.
     """
     contents = text_read(path=file)
     regexp = re.compile(pattern=string)
@@ -144,4 +146,7 @@ def grep(file: str, string: str) -> list[str]:
         if re.search(pattern=regexp, string=line):
             print(line)
             lines.append(line)
-    return lines
+            if strip:
+                contents.remove(line)
+    return lines, contents
+

@@ -25,13 +25,15 @@ PARAMETER_FILES: dict[str, str] = dict(
     gaff = "leaprc.gaff",
     gaff2 = "leaprc.gaff2")
 
-def gen_leap(ligand_name:str,
-            pdb_file:str,
+def gen_leap(protein_file:str,
+            ligand_name:str|None = None,
+            waters: str|None = None,
+            ions: str|None = None,
             parm_file: str = "complex.parm7",
             amber_coor: str = "complex.rst7",
             forcefield: str = "ff14SB",
             gaff: None|str = "gaff",
-            water: None|str = "tip3p",
+            water: None|str = "TIP3P",
             box: float = 12.0,
             extra_parms: list[str] = []
             ) -> str:
@@ -50,19 +52,31 @@ def gen_leap(ligand_name:str,
 
     for parm in extra_parms:
         file += f"source {PARAMETER_FILES[parm]}\n"
-
+    complex = "prot "
+    if ligand_name is not None:
+        complex += " lig"
+        file += f"""
+lig = loadmol2 {ligand_name}_ac.mol2
+loadamberparams {ligand_name}_ac.frcmod
+check lig"""
+    if waters is not None:
+        complex += " wat"
+        file += f"""
+wat = loadpdb {waters}
+check wat"""
+    if ions is not None:
+        complex += " ion"
+        file += f"""
+ion = loadpdb {ions}
+check ion"""
     file += f"""
-lig = loadmol2 {ligand_name}.mol2
-loadamberparams {ligand_name}.frcmod
-check lig
-
-prot = loadpdb {pdb_file}
+prot = loadpdb {protein_file}
 check prot
 
-complex = combine {"{"} prot lig {"}"}
+complex = combine {"{"} {complex} {"}"}
 solvateOct complex {water}BOX {box}
 addions complex Na+ 0
-savepdb complex complex.pdb
+savepdb complex {parm_file.replace(".parm7", ".pdb")}
 saveamberparm complex {parm_file} {amber_coor}
 quit"""
     return file
@@ -74,9 +88,10 @@ def run_leap(path: str, file: str = "leap.in") -> None:
     Args:
         path (str): location of the leap.in file
     """
-    log = subprocess.run(args=["tleap", "-f", file], cwd = path,
-                            text = True, capture_output = True, check=True)
-    io.text_dump(text=log.stdout, path=os.path.join(path, "leap.log"))
+    print(f"INFO: Running tleap -f {file} > {file.replace('.in', '.log')} in {path}")
+    with open(os.path.join(path, file.replace(".in", ".log")), "w") as f:
+        subprocess.run(args=["tleap", "-f", file], cwd = path,
+                            text = True, stdout=f, check=True)
 
 def gen_leap_ti(
         ligand_name: str,
@@ -86,7 +101,9 @@ def gen_leap_ti(
         protein_out: str = "protein",
         forcefield: str = "ff14SB",
         box: float = 12.0,
-        gaff: str|None = None) -> str:
+        gaff: str|None = "gaff", 
+        water: str|None = "TIP3P",
+        extra_parms: list[str] = []) -> str:
     """Generates the TI leap file which generates the dual-protein leap file.
 
     Args:
@@ -110,25 +127,30 @@ def gen_leap_ti(
     else:
         gaff_str = f"source leaprc.{gaff}"
 
-    file = f"""source leaprc.protein.{forcefield}
-source leaprc.{KNOWN_FORCEFIELDS[forcefield]["phosaa"]}
-source {KNOWN_FORCEFIELDS[forcefield]["waterff"]}
-{gaff_str}
+    file = f"source {PARAMETER_FILES[forcefield]}\n"
 
+    if water is None:
+        water = KNOWN_FORCEFIELDS[forcefield]["water"]
+    file += f"source {PARAMETER_FILES[water]}\n"
+
+    if gaff is not None:
+        file += f"source {PARAMETER_FILES[gaff]}\n"
+
+    for parm in extra_parms:
+        file += f"source {PARAMETER_FILES[parm]}\n"
+    file += f"""
 lig = loadmol2 {ligand_name}.mol2
 loadamberparams {ligand_name}.frcmod
 check lig
 
-prot1 = loadpdb {protein_1}.pdb
+prot1 = loadpdb {protein_1}
 check prot1
 
-prot2 = loadpdb {protein_2}.pdb
+prot2 = loadpdb {protein_2}
 check prot2
 
-{KNOWN_FORCEFIELDS[forcefield]["waterfix"]}
-
 complex = combine {"{"} prot1 prot2 lig {"}"}
-solvateOct complex {KNOWN_FORCEFIELDS[forcefield]["water"]}BOX {box}
+solvateOct complex {water}BOX {box}
 addions complex Na+ 0
 addions complex Cl- 0
 savepdb complex {complex_out}.pdb
@@ -136,7 +158,7 @@ savepdb complex {complex_out}.pdb
 saveamberparm complex {complex_out}.parm7 {complex_out}.rst7
 
 protein = combine {"{"} prot1 prot2 {"}"}
-solvateOct protein {KNOWN_FORCEFIELDS[forcefield]["water"]}BOX {box}
+solvateOct protein {water}BOX {box}
 addions protein Na+ 0
 addions protein Cl- 0
 savepdb protein {protein_out}.pdb

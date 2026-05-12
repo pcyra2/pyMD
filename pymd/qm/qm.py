@@ -70,6 +70,8 @@ class QM:
             print("Molecule object passed as argument")
             self._input_coordinate_file = None
             self._input_coordinates = coordinates
+            self._charge = charge
+            self._spin = spin
         elif isinstance(coordinates, str):
             self._input_coordinate_file = coordinates
             crd_file = io.text_read(path=coordinates)
@@ -98,7 +100,7 @@ class QM:
         self._run_path = path
 
 
-    def set_standard_variables(self, method: str, basis: str, disp: str|None) -> None:
+    def set_standard_variables(self, method: str, basis: str, disp: str|None = None) -> None:
         """A quick method to set all the standard variables for a calculation.
 
         Args:

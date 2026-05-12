@@ -1,6 +1,6 @@
 from pymd.tools import hpc
 
-DEFAULT_HPC = hpc.HPC(name="ada", login_node="hpclogin02.ada.nottingham.ac.uk", username="brara83")
+DEFAULT_HPC = hpc.HPC(name="ada", login_node="ada", username="brara83")
 DEFAULT_HPC.add_partition(partition=hpc.PartitionClass(name="q4bioq",
                                                        cpus_per_node=96,
                                                        gpus_per_node=8,

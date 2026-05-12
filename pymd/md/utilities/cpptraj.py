@@ -12,7 +12,8 @@ def extract_ligand(
         parm_file: str,
         structure_file: str,
         resid: int,
-        output_file: str) -> str:
+        output_file: str,
+        path: str = "./")  -> None:
     """Uses cpptraj to extract a ligand. Strips all atoms that aren't the resid.
 
     Args:
@@ -21,6 +22,8 @@ def extract_ligand(
         resid (int): The residue ID of the ligand.
         output_file (str): The name of the output structure file. 
             This should contain the file extension.
+        path (str): The path to run the cpptraj calculation in. Defaults to `./`.
+    
     """
     file = f"""parm {parm_file}
 trajin {structure_file}
@@ -30,7 +33,11 @@ trajout {output_file}
 
 run
 """
-    return file
+    
+    run_cpptraj(job_file=file,
+                cpptraj_in="ligand_extract.in",
+                cpptraj_out="ligand_extract.out", 
+                path=path)
 
 def extract_protein(
     parm_file: str,
@@ -89,6 +96,46 @@ def run_cpptraj(
         cpptraj_in (str): The name of the input file for the logging of cpptraj.
         path (str): The path to run the simulation.
     """
+    print(f"INFO: Running cpptraj -i {cpptraj_in} > {cpptraj_out} in {path}")
     io.text_dump(text=job_file, path=os.path.join(path, cpptraj_in))
     with open(file=os.path.join(path, cpptraj_out), mode="w", encoding="UTF-8") as f:
         subprocess.run(args=["cpptraj", "-i", cpptraj_in], cwd=path, stdout=f, check=True)
+
+def to_pdb(structure_file: str, parm_file: str, pdb_name: str, path: str = "./"):
+    file = f"""parm {parm_file}
+trajin {structure_file}
+autoimage
+trajout {pdb_name}
+
+run
+"""
+    print(f"INFO: Running cpptraj to convert {structure_file} to pdb in {path}")
+    io.text_dump(file, os.path.join(path, "to_pdb.in"))
+    with open(os.path.join(path, "to_pdb.log"), "w") as f:
+        subprocess.run(args=["cpptraj", "-i", "to_pdb.in"], cwd=path, stdout=f, check=True)
+
+def strip(key: str,
+        structure_file: str,
+        parm_file: str,
+        output: str,
+        path: str = "./"):
+    """Strips contents from a structure/trajectory file using cpptraj. This can be used to strip solvent from a trajectory for example.
+    
+    Args:
+        key (str): The cpptraj strip command to specify what to strip. For example, to strip solvent, this would be "WAT".
+        structure_file (str): The name of the structure/trajectory file to strip.
+        parm_file (str): The parameter file for the system.
+        output (str): The name of the output file after stripping.
+        path (str): The path to run the cpptraj calculation in. Defaults to `./`.
+    """
+    file = f"""parm {parm_file}
+trajin {structure_file}
+strip {key}
+
+trajout {output}
+run
+"""
+    print(f"INFO: Running cpptraj to strip {key} from {structure_file} in {path}")
+    io.text_dump(file, os.path.join(path, "strip.in"))
+    with open(os.path.join(path, "strip.log"), "w") as f:
+        subprocess.run(args=["cpptraj", "-i", "strip.in"], cwd=path, stdout=f, check=True)

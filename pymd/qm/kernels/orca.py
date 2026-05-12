@@ -36,10 +36,14 @@ class Orca(QM):
     _subprocess_out: subprocess.CompletedProcess
     _out_file: list[str]
     _energies: list[float]
-    _secondary_frequency: str
+    _secondary_frequency: str = "None"
 
-    def __init__(self, input_file_name: str, output_file_name: str|None, coordinates: str|Molecule,
-                path: str = "./") -> None:
+    def __init__(self, input_file_name: str,
+            output_file_name: str|None,
+            coordinates: str|Molecule,
+            charge: int = 0,
+            spin: int = 0,
+            path: str = "./") -> None:
         """Initialises the QM Calculation.
         
         Args:
@@ -47,12 +51,14 @@ class Orca(QM):
             output_file_name (str|None): Name of the output file. 
                 If None, defaults to the name of the input file.
             coordinates (str|Molecule): The atomic coordinates for the system.
+            charge (int): The net charge of the system.
+            spin (int): The spin of the system.
             path (str): Where to run the calculation. Defaults to `./`.
         """
         if output_file_name is None:
             output_file_name = input_file_name.replace(".inp", ".out")
         super().__init__(input_file_name=input_file_name, output_file_name=output_file_name,
-                         coordinates=coordinates, run_path=path)
+                         coordinates=coordinates, charge=charge, spin=spin, run_path=path)
 
     def get_commands(self) -> list[str]:
         """Returns a list of variables from the class attributes"""
@@ -87,7 +93,7 @@ class Orca(QM):
             top_line += f" {cmd}"
         lines.append(top_line)
         if self._secondary_frequency != "None":
-            self._secondary_frequency = f"! {self._secondary_frequency}"
+            lines.append(f"! {self._secondary_frequency}")
         lines.append(f"%PAL NPROCS {self._cores} END")
         lines.append(f"%MAXCORE {self._mem_per_core}")
         if self._input_coordinate_file is not None:
@@ -105,21 +111,23 @@ class Orca(QM):
         self.build()
         io.text_dump(text=self._input_file,
                     path=os.path.join(self._run_path, self._input_file_name))
-        print("Running Orca...")
+        print("INFO: Running Orca...")
         
 
         start = time.perf_counter()
         with open(file=os.path.join(self._run_path, self._output_file_name), 
                   mode="w", encoding="utf-8") as f:
-            if platform.system() is "Linux":
-                print(f"{self._binary} {self._input_file_name} '--bind-to hwthread' > " \
-                    + f"{self._output_file_name}")
-                output = subprocess.run(args=[self._binary, self._input_file_name,
-                            "'--bind-to hwthread'"], cwd=self._run_path, stdout=f, check=True)
+            if platform.system() == "Linux":
+                # print(f"{self._binary} {self._input_file_name} '--bind-to hwthread' > " \
+                #     + f"{self._output_file_name}")
+                # output = subprocess.run(args=[self._binary, self._input_file_name,
+                            # "'--bind-to hwthread'"], cwd=self._run_path, stdout=f, check=True)
+                print(f"{self._binary} {self._input_file_name} > {self._output_file_name}")
+                output = subprocess.run(args=[self._binary, self._input_file_name], cwd=self._run_path, stdout=f, stderr=f, check=True)  #TODO Fix this...  
             else:
                 print(f"{self._binary} {self._input_file_name} > {self._output_file_name}")
                 output = subprocess.run(args=[self._binary, self._input_file_name],
-                                        cwd=self._run_path, stdout=f, check=True)
+                                        cwd=self._run_path, stdout=f, stderr=f, check=True)
         stop = time.perf_counter()
         self._calculation_time = stop - start
         self._subprocess_out = output

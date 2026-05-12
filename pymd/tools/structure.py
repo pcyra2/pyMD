@@ -113,6 +113,7 @@ class Molecule:
         bonds (list[Bond]): List of Bonds
         angles (list[Angle]): List of Angles
         nat (int): number of atoms in the molecule
+        Name (str): name of the molecule
     """
     charge: int
     spin: int
@@ -120,9 +121,11 @@ class Molecule:
     bonds: list[Bond]
     angles: list[Angle]
     nat: int
+    Name: str
 
-    def __init__(self, ) -> None:
+    def __init__(self, Name: str = "LIG") -> None:
         """Initialises the molecule class. """
+        self.Name = Name
 
     def from_atoms_list(self, atoms: list[Atom], charge: int, spin: int) -> None:
         """Initialises a molecule object from an atom list
@@ -150,7 +153,7 @@ class Molecule:
         if isinstance(lines, str):
             lines = lines.split(sep="\n")
         self.nat = int(lines[0])
-        atoms = []*self.nat
+        atoms = [Atom]*self.nat
         for i in range(self.nat):
             items = lines[i+2].split()
             atoms[i] = Atom(element=items[0], x=float(items[1]), y=float(items[2]), z=float(items[3]))
@@ -161,10 +164,11 @@ class Molecule:
 
     def from_mol2(self, lines: list[str], charge: int, spin: int) -> None:
         tmp = lines[2].split()
+        print(tmp)
         self.nat = int(tmp[0])
         nbonds = int(tmp[1])
-        atoms = [] * self.nat
-        bonds = [] * nbonds
+        atoms = [Atom] * self.nat
+        bonds = [Bond] * nbonds
         ATOM_LINES = False
         BOND_LINES = False
         i: int = 0
@@ -178,6 +182,7 @@ class Molecule:
                 assert ATOM_LINES is False
                 i = -1
                 BOND_LINES=True
+                continue
             if ATOM_LINES is True:
                 i += 1
                 tmp = line.split()
@@ -185,11 +190,12 @@ class Molecule:
                                 x=float(tmp[2]),
                                 y=float(tmp[3]),
                                 z=float(tmp[4]))
-                if i == self.nat:
+                if i == self.nat -1:
                     ATOM_LINES = False
             if BOND_LINES is True:
                 i += 1
                 tmp = line.split()
+                # print(tmp)
                 bonds[i] = Bond(at1=int(tmp[0]), at2=int(tmp[1]))
                 if i == nbonds:
                     BOND_LINES = False
@@ -199,7 +205,7 @@ class Molecule:
         self.spin = spin
         for bond in self.bonds:
             bond.set_length(length=calc_distance(a=self.atoms[bond.atom1], b=self.atoms[bond.atom2]))
-        self.find_angles()
+        # self.find_angles()
 
 
     def find_angles(self) -> None:
