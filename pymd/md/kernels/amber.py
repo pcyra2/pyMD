@@ -252,7 +252,8 @@ class Amber(MDClass):
             gpu (bool): Whether to run the calculation on a GPU. 
             hpc (Slurm|None): Whether to assign a HPC object to the calculation. 
         """
-        if self._sc_mask_1 != None:
+        # if self._sc_mask_1 != None:
+        if hasattr(self, "_sc_mask_1"):
             self.config.ntf = 1
         self.latest_job = MDJobClass(inputfile_name=input_file_name,
                 input_structure=input_structure,

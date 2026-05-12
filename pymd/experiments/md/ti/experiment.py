@@ -99,7 +99,7 @@ def main() -> None:
 
     if STATUS.get_status(stage="setup",step="leap")!= "complete":
         print("INFO: Running initial leap step")
-        leap_in = leap.gen_leap(ligand_name=config.ligand_mol2.replace(".mol2",""), pdb_file=config.protein_pdb, forcefield=config.forcefield, water="TIP3P")
+        leap_in = leap.gen_leap(protein_file=config.protein_pdb, ligand_name=config.ligand_mol2.replace(".mol2",""), forcefield=config.forcefield, water="TIP3P")
 
         io.text_dump(text=leap_in, path=os.path.join(setup_path, "leap.in"))
         leap.run_leap(path=setup_path)

@@ -12,8 +12,8 @@ from pymd.tools import io, structure
 # @dataclass
 class config:
     input_dir: str = "UserInput"
-    ligand_file: str = "MOH.mol2"
-    ligand_code: str = "MOH"
+    ligand_file: str = ""
+    ligand_code: str = ""
     lig_charge_spin: tuple[int,int] = (0,0) # Tuple of (charge, spin)
     protein_file: str = "protein.pdb"
     waters_file: str = "waters.pdb"
@@ -76,6 +76,10 @@ def main():
             else:
                 print("ERROR: Leap failed, check the log file for details.")
                 quit()
+    else:
+        for i in [config.base_pdb, config.parmfile, config.start_structure]:
+                    shutil.copy(os.path.join(config.input_dir, i), os.path.join(os.getcwd(), i))
+
             
 
             
