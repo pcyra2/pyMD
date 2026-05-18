@@ -33,3 +33,20 @@ DEFAULT_HPC.add_partition(partition=hpc.PartitionClass(name="compchemq",
                                                        nodes=5,
                                                        walltime=168,
                                                        qos="compchem"))
+
+SULIS =  hpc.HPC(name="sulis", login_node="sulis", username="brara83")
+SULIS.add_partition(partition=hpc.PartitionClass(name="gpu",
+                                                cpus_per_node=128,
+                                                gpus_per_node=3,
+                                                mem_per_node=492,
+                                                nodes=30,
+                                                walltime=48,
+                                                account="su006-101-gpu",
+                                                gpu_type="ampere_a100"))
+SULIS.add_partition(partition=hpc.PartitionClass(name="compute",
+                                                cpus_per_node=128,
+                                                gpus_per_node=0,
+                                                mem_per_node=492,
+                                                nodes=167,
+                                                walltime=48,
+                                                account="su006-101"))

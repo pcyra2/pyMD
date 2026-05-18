@@ -4,15 +4,18 @@ This script should automatically run thermodynamic integration.
 import os
 import shutil
 import hashlib
+import sys
 from dataclasses import dataclass
 
-from pymd.experiments.md.ti.helpers import recipies
+from pymd.experiments.md.ti.helpers import recipies, getdvdl_alchemlyb
 
 import pymd.md.kernels.amber as amber
 from pymd.md.recipies import thermodynamic_integration as TI
 from pymd.md.utilities import leap, cpptraj, parmed
 from pymd.tools import io, pdb, slurm
 from pymd.tools.status_tracker import StatusTracker
+from pymd.user_configs.hpc_defaults import DEFAULT_HPC, SULIS
+
 
 
 # @dataclass
@@ -48,9 +51,13 @@ class config:
     cpus: int = 12
     gpus: int = 1
     temperature: float = 318.0 #TODO Actually make this do something
-    hpc: slurm.Slurm = slurm.Slurm(partition="compchemq")
-    hpc_base_path: str = "/gpfs01/home/brara83/pyMD_WorkDir/Qian/TI"
+    # hpc_name: slurm.Slurm = slurm.Slurm(partition="compchemq")
+    hpc: slurm.Slurm
+    hpc_name: str = "sulis_gpu"
+    # hpc_base_path: str = "/gpfs01/home/brara83/pyMD_WorkDir/TI"
+    hpc_base_path: str = "/home/b/brara83/pyMD_WorkDir/TI"
     ti_windows: list[float] = [round(0 + i * 0.1,3) for i in range(11)]
+
 
 
 def main() -> None:
@@ -59,10 +66,24 @@ def main() -> None:
     """
     hpc_path = os.path.join(config.hpc_base_path, hashlib.md5(os.getcwd().encode()).hexdigest())
     config()
+    if len(sys.argv) > 1:
+        config.start_residue = sys.argv[1]
+        config.mutation_resid = int(sys.argv[2])
+        config.mutation_residue = sys.argv[3]
+    if "ada" in config.hpc_name:
+        partition = config.hpc_name.split("_")[1]
+        config.hpc = slurm.Slurm(DEFAULT_HPC, partition=partition)
+        config.hpc.set_modules(["cuda-12.2.2","amber-uon/gcc11.3.0/24" ])
+    elif "sulis" in config.hpc_name:
+        partition = config.hpc_name.split("_")[1]
+        config.hpc = slurm.Slurm(SULIS, partition=partition)
+        config.hpc.set_modules(["nottingham", "amber-uoneasy/20.11-fosscuda-2020b-AmberTools-21.3 "])
+    else:
+        raise ValueError(f"HPC {config.hpc_name} not recognized.")
+        
     config.hpc.set_gpus(gpus=config.gpus)
     config.hpc.set_ntasks(tasks=config.cpus)
     config.hpc.set_mem(mem=20)
-    config.hpc.set_modules(["cuda-12.2.2","amber-uon/gcc11.3.0/24" ])
     config.hpc.define_dirs(local_file_path=config.run_dir, hpc_file_path=hpc_path)
     config.hpc.hpc.make_dir(hpc_path)
     # config.hpc.hpc.make_dir(hpc_path)
@@ -99,7 +120,7 @@ def main() -> None:
 
     if STATUS.get_status(stage="setup",step="leap")!= "complete":
         print("INFO: Running initial leap step")
-        leap_in = leap.gen_leap(protein_file=config.protein_pdb, ligand_name=config.ligand_mol2.replace(".mol2",""), forcefield=config.forcefield, water="TIP3P")
+        leap_in = leap.gen_leap(protein_file=config.protein_pdb, ligand_name=config.ligand_mol2, forcefield=config.forcefield, water="TIP3P")
 
         io.text_dump(text=leap_in, path=os.path.join(setup_path, "leap.in"))
         leap.run_leap(path=setup_path)
@@ -127,8 +148,8 @@ def main() -> None:
             job.exe(gpu=True)
             STATUS.update_step(stage="setup", step=step_name, status="complete")
 
-    # stage = f"mutation_{config.start_residue}_{config.mutation_resid}_{config.mutation_residue}"
-    stage = f"mutation_{config.mutation_resid}_{config.mutation_residue}"
+    stage = f"mutation_{config.start_residue}_{config.mutation_resid}_{config.mutation_residue}"
+    # stage = f"mutation_{config.mutation_resid}_{config.mutation_residue}"
 
     if hasattr(STATUS, stage) is False:
         STATUS.add_stage(stage=stage, steps=["setup","mutate","equilibrate_protein", "equilibrate_complex"])
@@ -284,15 +305,18 @@ def main() -> None:
         else:
             raise ValueError("Invalid structure type")
         # config.hpc.hpc.make_dir(os.path.join(hpc_path, path))
-        
+
+        complete: bool = False        
         for lam in config.ti_windows:
             window_path = os.path.join(path, str(lam))
             step = f"equilibrate_{structure}_{lam}"
             config.hpc.define_dirs(local_file_path=window_path, hpc_file_path=os.path.join(hpc_path, window_path))
             if STATUS.get_status(stage=stage, step=step) == "Not Started":
+                complete=False
+                io.make_dir(path=window_path)
                 config.hpc.hpc.make_dir(hpc_work_dir=os.path.join(hpc_path, window_path))
                 config.hpc.hpc.sync(work_dir=window_path, hpc_work_dir=os.path.join(hpc_path, window_path))
-                io.make_dir(path=window_path)
+                
                 shutil.copy(src=os.path.join(path, "ti_equil.ncrst"),
                         dst=os.path.join(window_path, "ti_equil.ncrst"))
                 shutil.copy(src=os.path.join(path, f"{structure}_merged.parm7"),
@@ -303,12 +327,25 @@ def main() -> None:
                                         lambda_value=lam,
                                         temperature=config.temperature)
                 slurm_id = None
-                for job in mm.jobs[4:]:
-                    job.exe(hpc=config.hpc, dependency=slurm_id)
-                    slurm_id = job.hpc.job.job_id
-                print(f"INFO: equilibration of {structure}, lam={lam} submitted. ID = {mm.jobs[-1].hpc.job.job_id}")
+                run_lines = []
+                for job in mm.jobs[-4:]:
+                    job.update_run_path(window_path)
+                    # job.exe(hpc=config.hpc, dependency=slurm_id)
+                    job.gen_input_file()
+                    run_lines.append(job.gen_run_lines())
+                print(run_lines)
+                config.hpc.add_dependency(None)
+                io.text_dump(text=config.hpc.gen_script(command=run_lines), path=os.path.join(window_path, config.hpc.file_name))
+                config.hpc.submit()
+                slurm_id = config.hpc.job.job_id
+
+                # quit()
+
+                # slurm_id = job.hpc.job.job_id
+
+                print(f"INFO: equilibration of {structure}, lam={lam} submitted. ID = {slurm_id}")
                 STATUS.update_step(stage=stage, step=step, status="submitted")
-                STATUS.update_step(stage=stage, step = f"{step}_id",status=mm.jobs[-1].hpc.job.job_id)
+                STATUS.update_step(stage=stage, step = f"{step}_id",status=slurm_id)
             elif STATUS.get_status(stage=stage, step=step) == "submitted": 
                 print("Job submitted to HPC")
                 job_id = int(STATUS.get_status(stage=stage, step = f"{step}_id"))
@@ -324,10 +361,12 @@ def main() -> None:
                         io.text_dump(new_pdb, os.path.join(window_path, "equilibrated_mutant.pdb"))
                         io.text_dump(new_pdb, os.path.join(setup_path, f"equilibrated_mutant_{config.mutation_resid}_{config.mutation_residue}.pdb"))
                     STATUS.update_step(stage=stage, step=step, status="complete", )
-            
+                else:
+                    complete=False
             prod_step = f"prod1_{structure}_{lam}"
             # STATUS.add_steps(stage=stage, steps=[prod_step])
             if STATUS.get_status(stage=stage, step=prod_step) == "Not Started":
+                complete=False
                 mm.set_ti(lam=lam, mbar=True, lambda_list=config.ti_windows)
                 mm = recipies.prod_ti(mm=mm, path=window_path, start_structure="ti_equil.ncrst",temperature=config.temperature, outfile="prod1")
                 if STATUS.get_status(stage=stage, step=step) == "submitted": 
@@ -349,13 +388,14 @@ def main() -> None:
                 if stat == "CD":
                     config.hpc.hpc.sync(work_dir=window_path, hpc_work_dir=os.path.join(hpc_path, window_path), direction="backward")
                     STATUS.update_step(stage=stage, step=prod_step, status="complete" )
-            anal_step = f"prod1_{structure}_{lam}_anal"
-            if STATUS.get_status(stage=stage, step=prod_step) == "complete": 
-                if STATUS.get_status(stage=stage, step=anal_step) == "Not Started":
-                    
+                else:
+                    complete=False
+        if complete:
+            if STATUS.get_status("")
+            getdvdl_alchemlyb.get_dvdl_main(glob_pattern="prod1.en",
+                                        path=path,
+                                        windows=config.ti_windows)
 
-
-        
 
 if __name__ == "__main__":
     main()

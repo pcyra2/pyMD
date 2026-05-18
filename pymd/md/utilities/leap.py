@@ -55,7 +55,13 @@ def gen_leap(protein_file:str,
     complex = "prot "
     if ligand_name is not None:
         complex += " lig"
-        file += f"""
+        if "mol2" in ligand_name:
+           file += f"""
+lig = loadmol2 {ligand_name}
+loadamberparams {ligand_name.replace(".mol2",".frcmod")}
+check lig"""
+        else:
+            file += f"""
 lig = loadmol2 {ligand_name}_ac.mol2
 loadamberparams {ligand_name}_ac.frcmod
 check lig"""

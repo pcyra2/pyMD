@@ -79,7 +79,7 @@ def qian_init_system(mm: MDClass, path: str, start_structure: str, temperature: 
 	return mm
 
 def equil_ti(mm: MDClass, path: str, start_structure:str, lambda_value: float, temperature: float) -> MDClass:
-	mm.set_minimisation(steps=10000, steps_steepest=5000)
+	mm.set_minimisation(steps=10000, steps_steepest=10000) ## NTMIN==2 This is essential when minimising with soft core potential.
 	mm.set_outputs(energy=10, restart=0, trajectory=0)
 	mm.set_ti(lam=lambda_value, mbar=False)
 	mm.config.set_vlim(20)
@@ -123,7 +123,7 @@ def equil_ti(mm: MDClass, path: str, start_structure:str, lambda_value: float, t
                barostat="monte_carlo",
                temperature=temperature,
                pressure=1)
-	mm.set_outputs(energy=1000, restart=1000, trajectory=int(steps/50))
+	mm.set_outputs(energy=10000, restart=10000, trajectory=int(steps/50))
 	mm.set_ti(lam=lambda_value, mbar=False)
 	mm.config.set_vlim(20)
 	mm.build(input_file_name="ti_equil",
@@ -137,10 +137,12 @@ def prod_ti(mm: MDClass, path: str, start_structure:str,temperature: float, outf
     mm.set_npt(steps=convert.time_to_steps(sim_time=10, time_units="ns", timestep=0.002),
                temperature=temperature,
                pressure=1)
-    mm.set_outputs(energy=100, restart=100, trajectory=50000)
+    mm.set_outputs(energy=1000, restart=1000, trajectory=50000)
     mm.build(input_file_name=outfile,
             input_structure=start_structure,
             output_file_name=outfile,
             run_path=path,
             gpu=True)
     return mm
+
+# def analysis(path: str, ):

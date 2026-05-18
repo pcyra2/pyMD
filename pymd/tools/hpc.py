@@ -25,6 +25,8 @@ class PartitionClass:
     wall_time: int
     qos: str|None
     name: str
+    account: str|None 
+    gpu_type: str
 
     def __init__(self, name: str,
                 cpus_per_node: int,
@@ -32,8 +34,10 @@ class PartitionClass:
                 mem_per_node: int,
                 nodes: int,
                 walltime: int,
-                qos: str|None = None) -> None:
-        """Defines the default data for a HPC SLURM partition.
+                qos: str|None = None,
+                account: str|None = None,
+                gpu_type: str|None = None) -> None:
+        """Defines the default data for a HPC S`LURM partition.
         
         Args:
             name (str): Name of the partition. 
@@ -51,6 +55,9 @@ class PartitionClass:
         self.nodes = nodes
         self.wall_time = walltime
         self.qos = qos
+        self.account = account
+        if gpu_type is not None:
+            self.gpu_type = gpu_type
 
     def __str__(self) -> str:
         return f"Partition: {self.name}"

@@ -50,6 +50,13 @@ class MDJobClass:
         self.input_structure = input_structure
         self.run_path = run_path
 
+    def update_run_path(self, path: str):
+        """used to update the run path of the md job"""
+        self.run_path = path
+    
+    def clear_dependency(self):
+        self.hpc.dependency = None
+
     def add_inputfile(self) -> None:
         """The inputfile as a list of lines
         """
@@ -83,6 +90,16 @@ class MDJobClass:
         """
         self.gpu = True
 
+    def gen_input_file(self) -> None:
+        """
+        Generates the input file without running the calculation.
+        """
+        _ = self.kernel.exec(input_file_name=self.inputfile_name,
+                            output_file_name=self.outputfile_name,
+                            input_structure_name=self.input_structure,
+                            path=self.run_path,
+                            gpu=self.gpu,
+                            dry_run=True)
 
     def to_cpu(self) -> None:
         """Swaps the job back to a CPU job
@@ -103,6 +120,14 @@ class MDJobClass:
         self._outfile_analysis_lines = outfile_analysis_lines
 
 
+    def gen_run_lines(self) -> str:
+        self.run_line = self.kernel._gen_runlines(
+                            input_file_name=self.inputfile_name,
+                            input_structure_name=self.input_structure,
+                            output_file_name=self.outputfile_name,
+                            gpu=self.gpu)
+        return self.run_line
+
     def exe(self, gpu: bool|None = None, hpc: Slurm|None = None, dependency: int|None = None) -> None:
         """
         #TODO
@@ -119,6 +144,8 @@ class MDJobClass:
             self.hpc = hpc
             if dependency is not None:
                 self.hpc.add_dependency(dependency=dependency)
+            else:
+                self.clear_dependency()
         cpu_path = self.kernel.get_exe_path(gpu=False)
         if self.gpu and hasattr(self, 'hpc'):
             gpu_path = self.kernel.get_exe_path(gpu=True)
@@ -129,26 +156,25 @@ class MDJobClass:
         elif hasattr(self, 'hpc') is False:
             assert cpu_path is not None
 
-        self.run_line = self.kernel._gen_runlines(
-                            input_file_name=self.inputfile_name,
-                            input_structure_name=self.input_structure,
-                            output_file_name=self.outputfile_name,
-                            gpu=self.gpu)
+        self.run_line = self.gen_run_lines()
         if hasattr(self, 'hpc'): # if self.hpc is not None:
             # assert self.run_line == self.hpc.local_file_dir, \
             #     "ERR: There is a mis-match between the cwd of the slurm object and the md job."
 
             ## Generate slurm submission script
+            print(f"INFO: Generating the slurm submission script {self.hpc.file_name} in {self.run_path}")
             slurm_script = self.hpc.gen_script(command=self.run_line)
             io.text_dump(text=slurm_script, path=os.path.join(self.run_path, self.hpc.file_name))
 
             ## Generate input files
-            _ = self.kernel.exec(input_file_name=self.inputfile_name,
-                            output_file_name=self.outputfile_name,
-                            input_structure_name=self.input_structure,
-                            path=self.run_path,
-                            gpu=self.gpu,
-                            dry_run=True)
+            # _ = self.kernel.exec(input_file_name=self.inputfile_name,
+            #                 output_file_name=self.outputfile_name,
+            #                 input_structure_name=self.input_structure,
+            #                 path=self.run_path,
+            #                 gpu=self.gpu,
+            #                 dry_run=True)
+
+            self.gen_input_file()
 
             ## Sync the files, submit, and wait for end.
             self.hpc.submit()

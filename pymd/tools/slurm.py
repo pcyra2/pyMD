@@ -92,12 +92,13 @@ class Slurm:
     ping_time: int = 60
     dependency: int|None = None
 
-    def __init__(self,partition:str = "defq") -> None:
+    def __init__(self,hpc: HPC = DEFAULT_HPC, partition:str = "defq") -> None:
         """Initializes the job, by first selecting the partition
         
         Args:
             partition (str, optional): Partition to use. Defaults to defq.
         """
+        self.hpc = hpc
         assert partition in self.hpc.partitions.keys(), \
             f"Partition {partition} not recognized for HPC {self.hpc.name}."
         self.partition = HPC.partitions[partition]
@@ -208,7 +209,7 @@ class Slurm:
     def add_dependency(self, dependency:int):
         self.dependency = dependency
 
-    def gen_script(self, command:str)->str:
+    def gen_script(self, command:str|list[str])->str:
         """Generates the SLURM script for the job.
 
         Args:
@@ -226,8 +227,13 @@ class Slurm:
 #SBATCH --ntasks-per-node={self.tasks_pn}"""
         if self.partition.qos is not None:
             file += f"\n#SBATCH --qos={self.partition.qos}"
+        if self.partition.account is not None:
+            file += f"\n#SBATCH --account={self.partition.account}"
         if self.gpus > 0:
-            file += f"\n#SBATCH --gres=gpu:{self.gpus}"
+            if hasattr(self.partition, "gpu_type"):
+                file += f"\n#SBATCH --gres=gpu:{self.partition.gpu_type}:{self.gpus}"
+            else:
+                file += f"\n#SBATCH --gres=gpu:{self.gpus}"
         if self.array is True:
             file += f"\n#SBATCH --array=1-{self.array_len}"
         if self.dependency is not None:
@@ -245,8 +251,12 @@ class Slurm:
             file += "echo \"Running job: $SLURM_ARRAY_TASK_ID\"\n"
             file += "echo \"Command: $CMD\"\n"
             file += "eval $CMD \n"
-
-        file += f"\n\n{command}\n"
+        if isinstance(command, str):
+            file += f"\n\n{command}\n"
+        elif isinstance(command, list):
+            file += "\n\n"
+            for cmd in command:
+                file += f"{cmd}\n"
 
         return file
 

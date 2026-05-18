@@ -27,6 +27,7 @@ class AmberConfig:
         ntwr (int): Frequency to update the restart file
         ioutfm (int): Writes netCDF trajectories as binary if 1, otherwise ASCII if 0.
         iwrap (int): Wraps the trajectories into the "primary box"
+        ntwe (int): Frequency to write to mden file
 
         ## Minimisation options
         maxcyc (int): Maximum number of minimisation steps
@@ -110,6 +111,7 @@ class AmberConfig:
     ntwr: int = 100 # Frequency to update the restart file
     ioutfm: int = 1 # Writes netCDF trajectories as binary
     iwrap: int = 1 # Wraps the trajectories into the "primary box"
+    ntwe: int = 0 # Frequency to write to mden file
 
     ## Minimisation options
     maxcyc: int = 300 # Maximum number of minimisation steps
@@ -232,15 +234,20 @@ class AmberConfig:
         """
         if output_file_name is None:
             output_file_name = input_file_name
+        if self.ifsc == 1:
+            en_file = f"-e {output_file_name}.en"
+            self.ntwe = self.ntpr
+        else:
+            en_file = ""
         if gpu:
             self._run_lines = f"pmemd.cuda -O -i {input_file_name}.in -p {self._param_file} -c {input_structure_name} -ref {input_structure_name} " \
                 + f"-o {output_file_name}.out -r {output_file_name}.ncrst" \
-                +f" -x {output_file_name}.nc"
+                +f" -x {output_file_name}.nc {en_file}"
  
         else:
             self._run_lines = f"sander -O -i {input_file_name}.in -p {self._param_file} -c {input_structure_name} -ref {input_structure_name} " \
                 + f" -o {output_file_name}.out -r {output_file_name}.ncrst" \
-                + f" -x {output_file_name}.nc"
+                + f" -x {output_file_name}.nc {en_file}"
         return self._run_lines
     
     def exec(
@@ -266,13 +273,13 @@ class AmberConfig:
         inputfile = self.gen_input_file(filename = input_file_name)
         io.text_dump(inputfile, os.path.join(path, f"{input_file_name}.in"))
 
-        assert os.path.isfile(path = os.path.join(path, input_structure_name)), \
-            f"Input structure file is not found: {input_structure_name}"
-
+        
         if dry_run:
             return None
-        
         else:
+            assert os.path.isfile(path = os.path.join(path, input_structure_name)), \
+            f"Input structure file is not found: {input_structure_name}"
+
             command = self._gen_runlines(input_file_name = input_file_name,
                                 input_structure_name = input_structure_name,
                                 output_file_name = output_file_name,

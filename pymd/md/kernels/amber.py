@@ -102,6 +102,8 @@ class Amber(MDClass):
             steps (int): Total number of minimisation steps
             steps_steepest (int, optional): Number of steepest-descent gradient steps to perform
         """
+        if hasattr(self, "_sc_mask_1"):
+            steps_steepest = steps # For sc calculations, ntmin must equal 2
         self.config.set_minimisation_variables(steps_total=steps,
                                                 steps_steepest=steps_steepest)
         self.config.clear_attribute(attribute="nstlim")
@@ -320,13 +322,13 @@ class Amber(MDClass):
         steps: int|None = None
         ntpr: int|None = None
         num_datapoints: int|None = None
-        arr: numpy.ndarray|None = None
+        # array: numpy.ndarray|None = None
         dt: float|None = None
         for i, tmp in enumerate(variables):
             if tmp in OUTPUTFILE_DATAFLAGS.keys():
                 variables[i] = OUTPUTFILE_DATAFLAGS[tmp]
         # print(f"INFO: Extracting {variables} from the MD output files.")
-    
+        array: numpy.ndarray|None = None
 
         # if job.kernel._minimisation == False:
         start_line = None
@@ -352,12 +354,12 @@ class Amber(MDClass):
                 else:
                     num_datapoints = int(steps /ntpr) +2
                 df =  pandas.DataFrame(columns = variables)
-                arr: numpy.ndarray = numpy.zeros(shape=[len(variables)+3, num_datapoints])
+                array: numpy.ndarray = numpy.zeros(shape=[len(variables)+3, num_datapoints])
                 start_line = i
                 break
         assert start_line is not None
         assert num_datapoints is not None
-        assert arr is not None
+        assert array is not None
         assert dt is not None
         
 

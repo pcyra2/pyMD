@@ -126,7 +126,7 @@ def remove_dir(path: str, force: bool = True) -> None:
         else:
             shutil.rmtree(path=path)
 
-def grep(file: str, string: str, strip: bool = False) -> list[str]:
+def grep(file: str, string: str, strip: bool = False)-> tuple[list[str], list[str]]:
     """
     a function that should act like the bash 'grep' command.
 
