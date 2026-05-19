@@ -463,7 +463,7 @@ class AmberConfig:
         else:
             self.irest = 0
             self.ntx = 1
-            self.nmropt = 0
+            # self.nmropt = 0
 
     def set_thermostat(self, thermostat: int|str|None) -> None:
         """Sets the thermostat for the simulation.
@@ -527,6 +527,7 @@ class AmberConfig:
             ensemble_int = 0
         elif ensemble == "heat":
             ensemble_int = 1
+            self.nmropt=1
         elif ensemble == "nvt":
             ensemble_int = 1
         elif ensemble == "npt":
@@ -641,9 +642,15 @@ class AmberConfig:
             assert isinstance(lambda_list, list)
             self.ifmbar = 1
             self.mbar_states = len(lambda_list)
-            lambda_str = str(lambda_list[0])
+            if lambda_list[0] == 0:
+                lambda_str = "0.0001"
+            else:
+                lambda_str = str(lambda_list[0])
             for lam in lambda_list[1:]:
-                lambda_str += f",{lam}"
+                if lam == 1:
+                    lambda_str += "0.9999"
+                else:
+                    lambda_str += f",{lam}"
             self.mbar_lambda = lambda_str
 
     def set_vlim(self, vlim: float):

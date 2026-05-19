@@ -3,6 +3,7 @@ import shutil
 import os
 import hashlib
 import glob
+import argparse
 
 from pymd.experiments.md.replica_md.helpers import recipies
 from pymd.tools import io, structure
@@ -36,6 +37,16 @@ class config:
 
 
 def main():
+    parser = argparse.ArgumentParser(prog="Replica MD tool.")
+    optional = parser.add_argument_group("Optional arguments:")
+    optional.add_argument("-t", "--temp", help="Temperature to run the simulation at", type=float, required=False, default=300.0)
+
+
+    args = parser.parse_args()
+    config.temperature = float(args.temp)
+
+
+
     hpc_path = os.path.join(config.hpc_base_path, hashlib.md5(os.getcwd().encode()).hexdigest())
 
     hpc = recipies.init_hpc(config=config)
