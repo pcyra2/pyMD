@@ -203,9 +203,9 @@ def main() -> None:
             ## Therefore you check that the mutant has been made and equilibrated.
             exists = False
             for i in STATUS._to_dict().keys():
-                words = i.split()
+                words = i.split("_")
                 if words[0] == "mutation":
-                    if words[2] == config.mutation_resid and words[3] == config.start_residue:
+                    if words[2] == str(config.mutation_resid) and words[3] == config.start_residue:
                         exists = True
             if exists == False:
                 raise ValueError(f"ERROR: Cannot mutate {config.start_residue} to {config.mutation_resid}")
@@ -390,8 +390,8 @@ def main() -> None:
 
                         io.text_dump(new_pdb, os.path.join(window_path, "equilibrated_mutant.pdb"))
                         io.text_dump(new_pdb, os.path.join(mutant_protein_path, f"equilibrated_mutant_{config.mutation_resid}_{config.mutation_residue}.pdb"))
-                        cpptraj.extract_ligand(structure_file = f"{md.jobs[-1].inputfile_name}.ncrst",
-                                        parm_file = md.parm_file,
+                        cpptraj.extract_ligand(structure_file = f"{mm.jobs[-1].inputfile_name}.ncrst",
+                                        parm_file = mm.parm_file,
                                         resid = protein_max_resid+2, # +2 because there is 2 of one residue in the TI file. 
                                         output_file="Ligand.mol2",
                                         path = window_path)
