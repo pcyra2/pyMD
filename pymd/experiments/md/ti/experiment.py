@@ -160,6 +160,7 @@ def main() -> None:
 
     ## Define TI mutation.
     mutant_protein_path = os.path.join(config.run_dir,"mutant_structures")
+    io.make_dir(mutant_protein_path)
     stage = f"mutation_{config.start_residue}_{config.mutation_resid}_{config.mutation_residue}"
     # stage = f"mutation_{config.mutation_resid}_{config.mutation_residue}"
 
