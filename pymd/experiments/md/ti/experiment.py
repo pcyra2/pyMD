@@ -7,7 +7,7 @@ import hashlib
 import sys
 from dataclasses import dataclass
 
-from pymd.experiments.md.ti.helpers import recipies, getdvdl_alchemlyb
+from pymd.experiments.md.ti.helpers import recipies#, getdvdl_alchemlyb
 
 import pymd.md.kernels.amber as amber
 from pymd.md.recipies import thermodynamic_integration as TI
@@ -55,7 +55,7 @@ class config:
     hpc: slurm.Slurm
     hpc_name: str = "sulis_gpu"
     # hpc_base_path: str = "/gpfs01/home/brara83/pyMD_WorkDir/TI"
-    hpc_base_path: str = "/home/b/brara83/pyMD_WorkDir/TI"
+    hpc_base_path: str = "~/pyMD_WorkDir/TI"
     ti_windows: list[float] = [round(0 + i * 0.1,3) for i in range(11)]
 
 
@@ -64,6 +64,8 @@ def main() -> None:
     """
     Runs TI.
     """
+
+    ## Perform some initial config stuff including setting up HPC directories.
     hpc_path = os.path.join(config.hpc_base_path, hashlib.md5(os.getcwd().encode()).hexdigest())
     config()
     if len(sys.argv) > 1:
@@ -88,7 +90,11 @@ def main() -> None:
     config.hpc.hpc.make_dir(hpc_path)
     # config.hpc.hpc.make_dir(hpc_path)
 
+
+    ## Checks for input data directory
     assert os.path.isdir(config.input_data_dir)
+
+    ## Initialises status tracker, either from existing file or from scratch.
     STATUS = StatusTracker(file_path =  config.status_file)
     if os.path.isfile(path=config.status_file):
         print(f"INFO: Reading job status from {config.status_file}")
@@ -118,6 +124,7 @@ def main() -> None:
     
     STATUS.update_step(stage="setup", step="data manipulation", status="complete")
 
+    ## Run initial leap step
     if STATUS.get_status(stage="setup",step="leap")!= "complete":
         print("INFO: Running initial leap step")
         leap_in = leap.gen_leap(protein_file=config.protein_pdb, ligand_name=config.ligand_mol2, forcefield=config.forcefield, water="TIP3P")
@@ -131,6 +138,8 @@ def main() -> None:
         else: 
             STATUS.update_step("setup", "leap", "error")
     
+
+    ## Set up global md objet.
     protein_max_resid: int = pdb.get_protein_res_id_range(lines=io.text_read(path=os.path.join(setup_path, config.protein_pdb)))
     
     md = amber.Amber(start_coordinates="complex.rst7",
@@ -140,7 +149,7 @@ def main() -> None:
                 )#TODO Add ligand and cofactor defenition.
     md.define_hardware(cpu = config.cpus, gpu = config.gpus)
 
-
+    ## Perform initial equilibration.
     md = recipies.qian_init_system(mm=md, path=setup_path, start_structure="complex.rst7", temperature=config.temperature)
     for job in md.jobs:
         step_name = job.inputfile_name.replace(".in","")
@@ -148,6 +157,9 @@ def main() -> None:
             job.exe(gpu=True)
             STATUS.update_step(stage="setup", step=step_name, status="complete")
 
+
+    ## Define TI mutation.
+    mutant_protein_path = os.path.join(config.run_dir,"mutant_structures")
     stage = f"mutation_{config.start_residue}_{config.mutation_resid}_{config.mutation_residue}"
     # stage = f"mutation_{config.mutation_resid}_{config.mutation_residue}"
 
@@ -171,25 +183,38 @@ def main() -> None:
         config.hpc.hpc.make_dir(hpc_work_dir=os.path.join(hpc_path, mutation_protein_path))
         config.hpc.hpc.make_dir(hpc_work_dir=os.path.join(hpc_path, mutation_complex_path))
 
+        shutil.copy(src=os.path.join(config.input_data_dir, config.ligand_mol2.replace("mol2", "frcmod")), 
+                        dst=os.path.join(mutation_setup_path, config.ligand_mol2.replace("mol2", "frcmod")))
+
+        ## Mutation case 1: You are mutating the wildtype, therefore you simply need to copy over the equilibrated structure.
+
         if config.start_residue == pdb.get_residue(lines = io.text_read(path=os.path.join(config.input_data_dir, config.protein_pdb)),
-                                                   residue_number=config.mutation_resid):
+                                                   residue_number=config.mutation_resid): 
             shutil.copy(src=os.path.join(setup_path, f"{md.jobs[-1].inputfile_name}.ncrst"), 
                         dst=os.path.join(mutation_setup_path, f"{md.jobs[-1].inputfile_name}.ncrst"))
             
             shutil.copy(src=os.path.join(setup_path, md.parm_file), 
                         dst=os.path.join(mutation_setup_path, md.parm_file))
-            shutil.copy(src=os.path.join(config.input_data_dir, config.ligand_mol2.replace("mol2", "frcmod")), 
-                        dst=os.path.join(mutation_setup_path, config.ligand_mol2.replace("mol2", "frcmod")))
+
+        ## Mutation case 2: You are mutating a mutant. This is the complicated case as you need to find the equilibrated mutant structure and its corresponding ligand.            
+
         else:
+            ## Therefore you check that the mutant has been made and equilibrated.
+            exists = False
             for i in STATUS._to_dict().keys():
                 words = i.split()
-                if words[2] == config.mutation_resid:
-                    if words[1] == config.start_residue:
-                        pass #TODO
-                    elif words[3] == config.start_residue:
-                        pass #TODO
-                    else:
-                        raise ValueError(f"ERROR: Cannot mutate {config.start_residue} to {config.mutation_resid}")
+                if words[0] == "mutation":
+                    if words[2] == config.mutation_resid and words[3] == config.start_residue:
+                        exists = True
+            if exists == False:
+                raise ValueError(f"ERROR: Cannot mutate {config.start_residue} to {config.mutation_resid}")
+            
+            ## Then you copy over the equilibrated protein structure and ligand.
+
+            shutil.copy(src=os.path.join(mutant_protein_path, f"equilibrated_mutant_{config.mutation_resid}_{config.start_residue}.pdb"),
+                dst=os.path.join(mutation_setup_path, "equilibrated_complex.pdb"))
+            shutil.copy(src=os.path.join(mutant_protein_path, f"Ligand_{config.mutation_resid}_{config.start_residue}.mol2"),
+                dst=os.path.join(mutation_setup_path, "Ligand.mol2"))
         STATUS.add_steps(stage=stage,
                     steps=[f"equilibrate_protein_{i}" for i in config.ti_windows])
         STATUS.add_steps(stage=stage,
@@ -201,21 +226,25 @@ def main() -> None:
         #             parm_file=md.parm_file,
         #             pdb_name="equilibrated_complex.pdb",
         #             path=mutation_path)
-        cpptraj.strip(key = f"!:1-{protein_max_resid}",
-            structure_file=f"{md.jobs[-1].inputfile_name}.ncrst",
-            parm_file=md.parm_file,
-            output="equilibrated_complex.pdb",
-            path=mutation_setup_path)
+
+        if os.path.isfile(os.path.join(mutation_setup_path,"equilibrated_complex.pdb" )) == False: # Mutation Case 1
+            cpptraj.strip(key = f"!:1-{protein_max_resid}",
+                structure_file=f"{md.jobs[-1].inputfile_name}.ncrst",
+                parm_file=md.parm_file,
+                output="equilibrated_complex.pdb",
+                path=mutation_setup_path)
+            cpptraj.extract_ligand(structure_file = f"{md.jobs[-1].inputfile_name}.ncrst",
+                    parm_file = md.parm_file,
+                    resid = protein_max_resid+1,
+                    output_file="Ligand.mol2",
+                    path = mutation_setup_path)
+        else:
+            assert os.path.isfile(os.path.join(mutation_setup_path,"Ligand.mol2")) ## Mutation case 2. File should already be copied. 
         equil_pdb = io.text_read(os.path.join(mutation_setup_path, "equilibrated_complex.pdb"))
         io.text_dump(text=pdb.mutate_residue(lines=equil_pdb,
                                     residue_number=config.mutation_resid,
                                     new_residue=config.mutation_residue, chain=""),
                             path=os.path.join(mutation_setup_path,"mutated_complex.pdb"))
-        cpptraj.extract_ligand(structure_file = f"{md.jobs[-1].inputfile_name}.ncrst",
-                    parm_file = md.parm_file,
-                    resid = protein_max_resid+1,
-                    output_file="Ligand.mol2",
-                    path = mutation_setup_path)
         
         io.text_dump(leap.gen_leap_ti(ligand_name="Ligand",
                                     protein_1="equilibrated_complex.pdb",
@@ -334,7 +363,7 @@ def main() -> None:
                     job.gen_input_file()
                     run_lines.append(job.gen_run_lines())
                 print(run_lines)
-                config.hpc.add_dependency(None)
+                config.hpc.add_dependency(dependency=None)
                 io.text_dump(text=config.hpc.gen_script(command=run_lines), path=os.path.join(window_path, config.hpc.file_name))
                 config.hpc.submit()
                 slurm_id = config.hpc.job.job_id
@@ -359,7 +388,14 @@ def main() -> None:
                         new_pdb = pdb.get_mutant_structure(pdb_file, config.mutation_resid, protein_max_resid+1)
 
                         io.text_dump(new_pdb, os.path.join(window_path, "equilibrated_mutant.pdb"))
-                        io.text_dump(new_pdb, os.path.join(setup_path, f"equilibrated_mutant_{config.mutation_resid}_{config.mutation_residue}.pdb"))
+                        io.text_dump(new_pdb, os.path.join(mutant_protein_path, f"equilibrated_mutant_{config.mutation_resid}_{config.mutation_residue}.pdb"))
+                        cpptraj.extract_ligand(structure_file = f"{md.jobs[-1].inputfile_name}.ncrst",
+                                        parm_file = md.parm_file,
+                                        resid = protein_max_resid+2, # +2 because there is 2 of one residue in the TI file. 
+                                        output_file="Ligand.mol2",
+                                        path = window_path)
+                        shutil.copy(src=os.path.join(window_path,"Ligand.mol2"),
+                                    dst=os.path.join(mutant_protein_path,f"Ligand_{config.mutation_resid}_{config.mutation_residue}.mol2"))
                     STATUS.update_step(stage=stage, step=step, status="complete", )
                 else:
                     complete=False
@@ -390,11 +426,11 @@ def main() -> None:
                     STATUS.update_step(stage=stage, step=prod_step, status="complete" )
                 else:
                     complete=False
-        if complete:
-            if STATUS.get_status("")
-            getdvdl_alchemlyb.get_dvdl_main(glob_pattern="prod1.en",
-                                        path=path,
-                                        windows=config.ti_windows)
+        # if complete:
+        #     if STATUS.get_status("")
+        #     getdvdl_alchemlyb.get_dvdl_main(glob_pattern="prod1.en",
+        #                                 path=path,
+        #                                 windows=config.ti_windows)
 
 
 if __name__ == "__main__":

@@ -206,10 +206,10 @@ class Slurm:
             self.array_len = length
         self.array_file = array_file
 
-    def add_dependency(self, dependency:int):
+    def add_dependency(self, dependency:int|None) -> None:
         self.dependency = dependency
 
-    def gen_script(self, command:str|list[str])->str:
+    def gen_script(self, command:str|list[str]) -> str:
         """Generates the SLURM script for the job.
 
         Args:

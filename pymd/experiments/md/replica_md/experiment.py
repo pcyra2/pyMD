@@ -30,7 +30,7 @@ class config:
     temperature: float = 300.0
     production_time: float = 100 # Time in ns
     replicas: int = 4 # Number of production repicas to run
-    hpc_partition: str = "compchemq"
+    hpc_partition: str = "ampereq"
     hpc_modules: list[str] = ["cuda-12.2.2","amber-uon/gcc11.3.0/24" ]
     hpc_base_path: str = "/gpfs01/home/brara83/pyMD_WorkDir/"
 
@@ -40,10 +40,11 @@ def main():
     parser = argparse.ArgumentParser(prog="Replica MD tool.")
     optional = parser.add_argument_group("Optional arguments:")
     optional.add_argument("-t", "--temp", help="Temperature to run the simulation at", type=float, required=False, default=300.0)
-
+    optional.add_argument("-pt", "--production_time", help="Length of production simulation", type=float, required=False, default=100)
 
     args = parser.parse_args()
     config.temperature = float(args.temp)
+    config.production_time = int(args.production_time)
 
 
 
