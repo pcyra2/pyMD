@@ -448,6 +448,7 @@ def main() -> None:
                         new_pdb = pdb.get_mutant_structure(pdb_file, config.mutation_resid, protein_max_resid+1)
 
                         io.text_dump(new_pdb, os.path.join(window_path, "equilibrated_mutant.pdb"))
+<<<<<<< HEAD
                         if config.multi_mutant:
                             if config.mutation_resid not in config.other_mutations:
                                 config.other_mutations[config.mutation_resid] = config.mutation_residue
@@ -455,6 +456,9 @@ def main() -> None:
                             io.text_dump(new_pdb, os.path.join(mutant_protein_path, f"equilibrated_mutant_" + "_".join([f"{i[0]}_{i[1]}" for i in sorted(config.other_mutations.items(), key=lambda x: x[0])])+".pdb"))
                         else:
                             io.text_dump(new_pdb, os.path.join(mutant_protein_path, f"equilibrated_mutant_{config.mutation_resid}_{config.mutation_residue}.pdb"))
+=======
+                        io.text_dump(new_pdb, os.path.join(mutant_protein_path, f"equilibrated_mutant_{config.mutation_resid}_{config.mutation_residue}.pdb"))
+>>>>>>> b79617f3573ee28411f80ceefaa8effd2eb07590
                         cpptraj.extract_ligand(structure_file = f"{mm.jobs[-1].inputfile_name}.ncrst",
                                         parm_file = mm.parm_file,
                                         resid = protein_max_resid+2, # +2 because there is 2 of one residue in the TI file. 
