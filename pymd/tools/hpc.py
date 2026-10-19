@@ -76,6 +76,7 @@ class HPC:
     login_node: str
     name: str
     username: str
+    _spoof: bool = False
 
     def __init__(self, name: str, login_node: str, username: str|None = None) -> None:
         """Initializes the HPC class. This allows allocation of name and how to connect
@@ -98,6 +99,12 @@ class HPC:
             self.username = username
 
 
+    def spoof(self) -> None:
+        self._spoof = True
+
+    def unspoof(self) -> None:
+        self._spoof = False
+
     def __str__(self) -> str:
         return f"HPC: {self.name}"
 
@@ -119,24 +126,27 @@ class HPC:
             hpc_work_dir (str): _description_
             direction (str, optional): _description_. Defaults to "forward".
         """
-        if direction.casefold() == "forward":
-            print(f"INFO: syncing {work_dir} to {self.login_node}:{hpc_work_dir}/.")
-            print(f"INFO: Running command: rsync -azP {work_dir}/* " \
-                  + f"{self.username}@{self.login_node}:{hpc_work_dir}/. ")
+        if self._spoof == False:
+            if direction.casefold() == "forward":
+                print(f"INFO: syncing {work_dir} to {self.login_node}:{hpc_work_dir}/.")
+                print(f"INFO: Running command: rsync -azP {work_dir}/* " \
+                    + f"{self.username}@{self.login_node}:{hpc_work_dir}/. ")
 
-            subprocess.run(["rsync", "-azP", f"{work_dir}/",
-                            f"{self.username}@{self.login_node}:{hpc_work_dir}/."],
-                            check=True)
-            print("INFO: Data synced.")
+                subprocess.run(["rsync", "-azP", f"{work_dir}/",
+                                f"{self.username}@{self.login_node}:{hpc_work_dir}/."],
+                                check=True)
+                print("INFO: Data synced.")
 
-        elif direction.casefold() == "backward" or direction.casefold() == "reverse":
-            print(f"INFO: syncing {self.login_node}:{hpc_work_dir}/* to {work_dir}")
-            print("INFO: Running command: rsync -azP " \
-                  + f"{self.username}@{self.login_node}:{hpc_work_dir}/* .")
-            subprocess.run(["rsync", "-azP",
-                            f"{self.username}@{self.login_node}:{hpc_work_dir}/", "."],
-                           cwd=work_dir, check=True)
-            print("INFO: Data synced.")
+            elif direction.casefold() == "backward" or direction.casefold() == "reverse":
+                print(f"INFO: syncing {self.login_node}:{hpc_work_dir}/* to {work_dir}")
+                print("INFO: Running command: rsync -azP " \
+                    + f"{self.username}@{self.login_node}:{hpc_work_dir}/* .")
+                subprocess.run(["rsync", "-azP",
+                                f"{self.username}@{self.login_node}:{hpc_work_dir}/", "."],
+                            cwd=work_dir, check=True)
+                print("INFO: Data synced.")
+        else:
+            print("WARNING: Spoofing the HPC interface. Nothing was performed. ")
 
     def _run_remote_command(self, command: str, error_check: bool = True) -> subprocess.CompletedProcess[str]:
         """
@@ -149,10 +159,11 @@ class HPC:
         Returns:
             _type_: _description_
         """
-        print(f"INFO: Running command `ssh {self.username}@{self.login_node} {command}`")
-        return subprocess.run(args=["ssh", f"{self.username}@{self.login_node}", command],
-                       check=error_check, encoding="UTF-8",
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if self._spoof == False:
+            print(f"INFO: Running command `ssh {self.username}@{self.login_node} {command}`")
+            return subprocess.run(args=["ssh", f"{self.username}@{self.login_node}", command],
+                        check=error_check, encoding="UTF-8",
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     def remove_dir(self, hpc_work_dir: str) -> None:
         """
@@ -161,8 +172,9 @@ class HPC:
         Args:
             hpc_work_dir (str): _description_
         """
-        print(f"INFO: deleting directory in `{hpc_work_dir}` on {self.name}")
-        _ = self._run_remote_command(command=f"rm -r {hpc_work_dir}")
+        if self._spoof == False:
+                print(f"INFO: deleting directory in `{hpc_work_dir}` on {self.name}")
+                _ = self._run_remote_command(command=f"rm -r {hpc_work_dir}")
 
 
     def make_dir(self, hpc_work_dir: str) -> None:
@@ -172,10 +184,12 @@ class HPC:
         Args:
             hpc_work_dir (str): _description_
         """
-        print(f"INFO: Making directory `{hpc_work_dir}` on {self.name}")
-        out = self._run_remote_command(command=f"mkdir {hpc_work_dir}", error_check=False)
-        print(f"INFO: {out.stdout}")
-        print(f"INFO: {out.stderr}")
+        if self._spoof == False:
+            print(f"INFO: Making directory `{hpc_work_dir}` on {self.name}")
+            out = self._run_remote_command(command=f"mkdir {hpc_work_dir}", error_check=False)
+            print(f"INFO: {out.stdout}")
+            print(f"INFO: {out.stderr}")
+        
 
 
     def submit_slurm(self, path: str, file: str) -> int:
@@ -189,11 +203,14 @@ class HPC:
         Returns:
             int: _description_
         """
-        print(f"INFO: Submitting slurm job {file} from {path}")
-        output = self._run_remote_command(command=f"cd {path} ; sbatch {file}")
-        stdout = output.stdout
-        print(f"INFO: Job ID is {stdout.split()[-1]}")
-        return int(stdout.split()[-1])
+        if self._spoof == False:
+            print(f"INFO: Submitting slurm job {file} from {path}")
+            output = self._run_remote_command(command=f"cd {path} ; sbatch {file}")
+            stdout = output.stdout
+            print(f"INFO: Job ID is {stdout.split()[-1]}")
+            return int(stdout.split()[-1])
+        else:
+            raise Exception(f"Cannot submit jobs when spoofing the HPC")
 
 
     def check_slurm_status(self, slurm_id: int) -> str:
@@ -206,11 +223,29 @@ class HPC:
         Returns:
             str: _description_
         """
-        output = self._run_remote_command(command="squeue -u $USER")
-        stdout = output.stdout
-        for line in stdout.rsplit(sep="\n"):
-            segments = line.split()
-            if len(segments) > 1:
-                if str(slurm_id) == segments[0]:
-                    return segments[4]
-        return "CD"
+        if self._spoof == False:
+            output = self._run_remote_command(command="squeue -u $USER")
+            stdout = output.stdout
+            for line in stdout.rsplit(sep="\n"):
+                segments = line.split()
+                if len(segments) > 1:
+                    if str(slurm_id) == segments[0]:
+                        return segments[4]
+            return "CD"
+        else:
+            print("WARNING: Spoofing HPC interface. Assuming the job has completed. Use with caution")
+            return "CD"
+
+    def check_slurm_array_status(self, slurm_id: int) -> str:
+        if self._spoof:
+            output = self._run_remote_command(command="squeue -u $USER")
+            stdout = output.stdout
+            for line in stdout.rsplit(sep="\n"):
+                segments = line.split()
+                if len(segments) > 1:
+                    if str(slurm_id) in segments[0]:
+                        return segments[4]
+            return "CD"
+        else:
+            print("WARNING: Spoofing HPC interface. Assuming the job has completed. Use with caution")
+            return "CD"

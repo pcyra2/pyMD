@@ -159,7 +159,8 @@ def production(md: Amber,
             name: str,
             hpc: slurm.Slurm,
             start_structure: str,
-            run_dir: str) -> tuple[Amber, StatusTracker]:
+            run_dir: str,
+        ) -> tuple[Amber, StatusTracker]:
 	if STATUS.get_status("production", name) != "complete":
 		steps = convert.time_to_steps(sim_time=config.production_time, time_units="ns", timestep=0.002)
 		md.set_npt(steps=steps,
@@ -171,6 +172,7 @@ def production(md: Amber,
                 output_file_name=name,
                 run_path=run_dir,
                 gpu=True)
+		hpc.update_submission_name(name=f"{name}_sub.sh")
 		if STATUS.get_status("production", name) == "submitted":
 			job_id = int(STATUS.get_status("production", f"{name}_id"))
 			stat = hpc.hpc.check_slurm_status(slurm_id=job_id)
@@ -178,7 +180,7 @@ def production(md: Amber,
 			if stat == "CD":
 				hpc.hpc.sync(work_dir=hpc.local_file_dir, hpc_work_dir=hpc.hpc_run_dir, direction="reverse")
 				md.jobs[-1].add_analysis_lines(outfile_analysis_lines=["Etot", "TEMP(K)", "VOLUME", "PRESS", "Density"], trajectory_analysis_lines=[])
-				md.analyse(job_int=-1, save_data=True, plot_fig=True, save_fig=True)
+				# md.analyse(job_int=-1, save_data=True, plot_fig=True, save_fig=True)
 				STATUS.update_step(stage="production", step=name, status="complete" )
 		else:
 			md.jobs[-1].exe(hpc=hpc)

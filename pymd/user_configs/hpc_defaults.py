@@ -50,3 +50,12 @@ SULIS.add_partition(partition=hpc.PartitionClass(name="compute",
                                                 nodes=167,
                                                 walltime=48,
                                                 account="su006-101"))
+
+ISAMBARD = hpc.HPC(name="isambardAI", login_node="u6we.aip2.isambard", username="brara83.u6we")
+ISAMBARD.add_partition(partition=hpc.PartitionClass(name="workq",
+                                                    cpus_per_node=288,
+                                                    gpus_per_node=4,
+                                                    mem_per_node=460,
+                                                    nodes=1362,
+                                                    walltime=24,
+                                                    ))

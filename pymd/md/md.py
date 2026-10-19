@@ -420,7 +420,7 @@ class MDClass:
     
     def analyse(self, job_int: int = -1, save_data: bool = True, plot_fig: bool = False, save_fig: bool = False):
         tmp = self.jobs[job_int]
-        mdout_data = self.parse_outfile(os.path.join(tmp.run_path, tmp.outputfile_name.replace(".out","")), tmp._outfile_analysis_lines) 
+        mdout_data = self.parse_outfile(os.path.join(tmp.run_path, tmp.outputfile_name), tmp._outfile_analysis_lines) 
         if save_data:
             mdout_data.to_csv(os.path.join(self.jobs[job_int].run_path,f"{self.jobs[job_int].outputfile_name}_summary.csv"),
                               index=False)

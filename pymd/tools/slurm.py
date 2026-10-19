@@ -80,6 +80,7 @@ class Slurm:
     mem = 10
     gpus = 0
     modules: list[str] = []
+    environment: list[str] = []
     array: bool = False
     array_len: int
     array_file: str|None = None
@@ -112,7 +113,7 @@ class Slurm:
         """Sets the maximum ammount of time for the slurm job. 
 
         Args:
-            wall_time (int): Maximum time for the slurm job.
+            wall_time (int): Maximum time for the slurm job in hours.
         """
         assert wall_time <= self.partition.wall_time, \
             f"Time {wall_time} exceeds max walltime for partition {self.partition} on HPC {self.hpc}."
@@ -170,6 +171,14 @@ class Slurm:
         """
         self.modules = modules
 
+    def add_environment(self, env:list[str]) -> None:
+        """
+        Adds extra environment lines to the slurm submission script. This comes after modules are loaded.
+
+        Args:
+            env (list[str]): List of environment lines to add to the slurm submission script. They can be anything.
+        """
+        self.environment = env
 
     def set_ntasks(self, tasks:int, per_node:bool = True) -> None:
         """Allocates the SLURM_NTASKS for the job
@@ -199,7 +208,7 @@ class Slurm:
             assert os.path.isfile(path=array_file), f"Array file {array_file} not found."
         self.array = True
         if length is None:
-            with open(file=array_file, mode="r", encoding="UTF-8") as f:
+            with open(file=os.path.join(self.local_file_dir, array_file), mode="r", encoding="UTF-8") as f:
                 lines = f.readlines()
             self.array_len = len(lines)
         else:
@@ -218,22 +227,30 @@ class Slurm:
         Returns:
             str: The SLURM file
         """
-        file = f"""#!/bin/bash
+        if self.hpc.name != "isambardAI":
+            file = f"""#!/bin/bash
 #SBATCH --job-name={self.name}
 #SBATCH --partition={self.partition.name}
 #SBATCH --nodes={self.nodes}
 #SBATCH --time={self.wall_time}:00:00
 #SBATCH --mem={self.mem}GB
 #SBATCH --ntasks-per-node={self.tasks_pn}"""
-        if self.partition.qos is not None:
-            file += f"\n#SBATCH --qos={self.partition.qos}"
-        if self.partition.account is not None:
-            file += f"\n#SBATCH --account={self.partition.account}"
-        if self.gpus > 0:
-            if hasattr(self.partition, "gpu_type"):
-                file += f"\n#SBATCH --gres=gpu:{self.partition.gpu_type}:{self.gpus}"
-            else:
-                file += f"\n#SBATCH --gres=gpu:{self.gpus}"
+            if self.partition.qos is not None:
+                file += f"\n#SBATCH --qos={self.partition.qos}"
+            if self.partition.account is not None:
+                file += f"\n#SBATCH --account={self.partition.account}"
+            if self.gpus > 0:
+                if hasattr(self.partition, "gpu_type"):
+                    file += f"\n#SBATCH --gres=gpu:{self.partition.gpu_type}:{self.gpus}"
+                else:
+                    file += f"\n#SBATCH --gres=gpu:{self.gpus}"
+        else:
+            file = f"""#!/bin/bash
+#SBATCH --job-name={self.name}
+#SBATCH --nodes={self.nodes}
+#SBATCH --time={self.wall_time}:00:00
+#SBATCH --gpus={self.gpus}
+            """
         if self.array is True:
             file += f"\n#SBATCH --array=1-{self.array_len}"
         if self.dependency is not None:
@@ -243,6 +260,9 @@ class Slurm:
         if self.modules:
             for module in self.modules:
                 file += f"module load {module}\n"
+        if self.environment: 
+            for env in self.environment:
+                file += env + "\n"
 
         file += "\n"
         if self.array is True:
@@ -274,6 +294,10 @@ class Slurm:
     def wait_for_finish(self, wait: bool, ping_time: int = 60) -> None:
         self.wait = wait
         self.ping_time = ping_time
+
+
+    def update_submission_name(self, name:str) -> None:
+        self.file_name = name
 
     def submit(self) -> None:
         """

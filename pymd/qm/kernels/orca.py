@@ -36,7 +36,9 @@ class Orca(QM):
     _subprocess_out: subprocess.CompletedProcess
     _out_file: list[str]
     _energies: list[float]
+    _frequencies: list[float]
     _secondary_frequency: str = "None"
+    _gibbs_free_energy: float|None = None
 
     def __init__(self, input_file_name: str,
             output_file_name: str|None,
@@ -133,6 +135,7 @@ class Orca(QM):
         self._subprocess_out = output
         self._get_output_file()
         self._get_energies()
+        self._get_frequencies()
 
 
     def _get_output_file(self) -> None:
@@ -146,7 +149,27 @@ class Orca(QM):
         for line in self._out_file:
             if "FINAL SINGLE POINT ENERGY" in line:
                 energies.append(float(line.split()[4]))
+            if "Final Gibbs free energy" in line:
+                self._gibbs_free_energy = float(line.split()[5])
         self._energies = energies
+
+
+    def _get_frequencies(self) -> None:
+        """Gets the frequencies of the calculation. This should be a list of length one if a single
+        point calculation."""
+        frequencies = []
+        start = len(self._out_file)
+        for i, line in enumerate(self._out_file):
+            if "VIBRATIONAL FREQUENCIES" in line:
+                start = i
+            if i >= start + 5:
+                try:
+                    frequencies.append(float(line.split()[1]))
+                except:
+                    break
+        self._frequencies = frequencies
+    
+    
 
     def print_output(self)->None:
         """Prints a custom output summary."""

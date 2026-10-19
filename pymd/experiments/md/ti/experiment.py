@@ -6,6 +6,8 @@ import shutil
 import hashlib
 import sys
 from dataclasses import dataclass
+from pprint import pprint
+from time import sleep
 
 from pymd.experiments.md.ti.helpers import recipies#, getdvdl_alchemlyb
 
@@ -14,7 +16,7 @@ from pymd.md.recipies import thermodynamic_integration as TI
 from pymd.md.utilities import leap, cpptraj, parmed
 from pymd.tools import io, pdb, slurm
 from pymd.tools.status_tracker import StatusTracker
-from pymd.user_configs.hpc_defaults import DEFAULT_HPC, SULIS
+from pymd.user_configs.hpc_defaults import DEFAULT_HPC, SULIS, ISAMBARD
 
 
 
@@ -53,16 +55,23 @@ class config:
     temperature: float = 318.0 #TODO Actually make this do something
     # hpc_name: slurm.Slurm = slurm.Slurm(partition="compchemq")
     hpc: slurm.Slurm
-    hpc_name: str = "sulis_gpu"
+    hpc_name: str = "isambard"
     # hpc_base_path: str = "/gpfs01/home/brara83/pyMD_WorkDir/TI"
-    hpc_base_path: str = "~/pyMD_WorkDir/TI"
-    ti_windows: list[float] = [round(0 + i * 0.1,3) for i in range(11)]
+    # hpc_base_path: str = "~/pyMD_WorkDir/TI"
+    hpc_base_path: str = "/projects/u6we/ross/pyMD_WorkDir/TI"
+    ti_windows: list[float] = [round(0 + i * 0.05,3) for i in range(21)]
+    multi_mutant: bool = False
+    other_mutations = dict()
 
 
 
 def main() -> None:
     """
     Runs TI.
+
+    Usage:
+
+        pTI [start_residue] [mutation_resid] [mutation_residue] []
     """
 
     ## Perform some initial config stuff including setting up HPC directories.
@@ -72,6 +81,15 @@ def main() -> None:
         config.start_residue = sys.argv[1]
         config.mutation_resid = int(sys.argv[2])
         config.mutation_residue = sys.argv[3]
+        if len(sys.argv) > 4:
+            print("INFO: Multi-mutant mode enabled. Starting from a protein with other mutations in other places, use with caution...")
+            config.multi_mutant = True
+            config.other_mutations = dict()
+            for i in range(4, len(sys.argv), 2):
+                config.other_mutations[int(sys.argv[i])] = sys.argv[i+1]
+
+
+            
     if "ada" in config.hpc_name:
         partition = config.hpc_name.split("_")[1]
         config.hpc = slurm.Slurm(DEFAULT_HPC, partition=partition)
@@ -80,12 +98,22 @@ def main() -> None:
         partition = config.hpc_name.split("_")[1]
         config.hpc = slurm.Slurm(SULIS, partition=partition)
         config.hpc.set_modules(["nottingham", "amber-uoneasy/20.11-fosscuda-2020b-AmberTools-21.3 "])
+    elif "isambard" in config.hpc_name:
+        config.hpc = slurm.Slurm(ISAMBARD, partition="workq")
+        config.hpc.set_modules(["PrgEnv-gnu/8.6.0"])
+        config.hpc.add_environment([ "module load PrgEnv-gnu/8.6.0", 
+                                "module swap gcc-native/14.2 gcc-native/12.3",
+                                "module load cudatoolkit/24.11_12.6",
+                                "export CUDA_MATH_LIB=/opt/nvidia/hpc_sdk/Linux_aarch64/24.11/math_libs/12.6/targets/sbsa-linux/lib",
+                                "export LD_LIBRARY_PATH=$CUDA_MATH_LIB:$LD_LIBRARY_PATH",
+                                "source /home/u6we/brara83.u6we/Software/pmemd26/amber.sh"])
     else:
         raise ValueError(f"HPC {config.hpc_name} not recognized.")
-        
+
     config.hpc.set_gpus(gpus=config.gpus)
     config.hpc.set_ntasks(tasks=config.cpus)
     config.hpc.set_mem(mem=20)
+    config.hpc.set_time(wall_time=3)
     config.hpc.define_dirs(local_file_path=config.run_dir, hpc_file_path=hpc_path)
     config.hpc.hpc.make_dir(hpc_path)
     # config.hpc.hpc.make_dir(hpc_path)
@@ -161,8 +189,13 @@ def main() -> None:
     ## Define TI mutation.
     mutant_protein_path = os.path.join(config.run_dir,"mutant_structures")
     io.make_dir(mutant_protein_path)
-    stage = f"mutation_{config.start_residue}_{config.mutation_resid}_{config.mutation_residue}"
+    if config.multi_mutant is False:
+        stage = f"mutation_{config.start_residue}_{config.mutation_resid}_{config.mutation_residue}"
+    else:
+        print(sorted(config.other_mutations.items(), key=lambda x: x[0]))
+        stage = f"mutation_{config.start_residue}_{config.mutation_resid}_{config.mutation_residue}-" + "_".join([f"{i[1]}{i[0]}" for i in sorted(config.other_mutations.items(), key=lambda x: x[0])])
     # stage = f"mutation_{config.mutation_resid}_{config.mutation_residue}"
+
 
     if hasattr(STATUS, stage) is False:
         STATUS.add_stage(stage=stage, steps=["setup","mutate","equilibrate_protein", "equilibrate_complex"])
@@ -187,40 +220,63 @@ def main() -> None:
         shutil.copy(src=os.path.join(config.input_data_dir, config.ligand_mol2.replace("mol2", "frcmod")), 
                         dst=os.path.join(mutation_setup_path, config.ligand_mol2.replace("mol2", "frcmod")))
 
-        ## Mutation case 1: You are mutating the wildtype, therefore you simply need to copy over the equilibrated structure.
+        
+        if config.multi_mutant is False: # Only mutating the wildtype protein in a single position.
+            ## Mutation case 1: You are mutating the wildtype, therefore you simply need to copy over the equilibrated structure.
+            if config.start_residue == pdb.get_residue(lines = io.text_read(path=os.path.join(config.input_data_dir, config.protein_pdb)),
+                                                    residue_number=config.mutation_resid): 
+                shutil.copy(src=os.path.join(setup_path, f"{md.jobs[-1].inputfile_name}.ncrst"), 
+                            dst=os.path.join(mutation_setup_path, f"{md.jobs[-1].inputfile_name}.ncrst"))
+                
+                shutil.copy(src=os.path.join(setup_path, md.parm_file), 
+                            dst=os.path.join(mutation_setup_path, md.parm_file))
 
-        if config.start_residue == pdb.get_residue(lines = io.text_read(path=os.path.join(config.input_data_dir, config.protein_pdb)),
-                                                   residue_number=config.mutation_resid): 
-            shutil.copy(src=os.path.join(setup_path, f"{md.jobs[-1].inputfile_name}.ncrst"), 
-                        dst=os.path.join(mutation_setup_path, f"{md.jobs[-1].inputfile_name}.ncrst"))
-            
-            shutil.copy(src=os.path.join(setup_path, md.parm_file), 
-                        dst=os.path.join(mutation_setup_path, md.parm_file))
+            ## Mutation case 2: You are mutating a mutant. This is the complicated case as you need to find the equilibrated mutant structure and its corresponding ligand.            
 
-        ## Mutation case 2: You are mutating a mutant. This is the complicated case as you need to find the equilibrated mutant structure and its corresponding ligand.            
+            else:
+                ## Therefore you check that the mutant has been made and equilibrated.
+                exists = False
+                for i in STATUS._to_dict().keys():
+                    words = i.split()
+                    if words[0] == "mutation":
+                        if words[2] == config.mutation_resid and words[3] == config.start_residue:
+                            exists = True
+                if exists == False:
+                    raise ValueError(f"ERROR: Cannot mutate {config.start_residue} to {config.mutation_resid}")
+                
+                ## Then you copy over the equilibrated protein structure and ligand.
 
-        else:
-            ## Therefore you check that the mutant has been made and equilibrated.
-            exists = False
-            for i in STATUS._to_dict().keys():
-                words = i.split()
-                if words[0] == "mutation":
-                    if words[2] == config.mutation_resid and words[3] == config.start_residue:
-                        exists = True
-            if exists == False:
-                raise ValueError(f"ERROR: Cannot mutate {config.start_residue} to {config.mutation_resid}")
-            
-            ## Then you copy over the equilibrated protein structure and ligand.
+                shutil.copy(src=os.path.join(mutant_protein_path, f"equilibrated_mutant_{config.mutation_resid}_{config.start_residue}.pdb"),
+                    dst=os.path.join(mutation_setup_path, "equilibrated_complex.pdb"))
+                shutil.copy(src=os.path.join(mutant_protein_path, f"Ligand_{config.mutation_resid}_{config.start_residue}.mol2"),
+                    dst=os.path.join(mutation_setup_path, "Ligand.mol2"))
+        else: #Multi-mutant case. You are mutating a protein that has other mutations in it. This is the most complicated case as you need to find the equilibrated multi-mutant structure and its corresponding ligand.
+            start_protein_path = os.path.join(mutant_protein_path, "equilibrated_mutant_"+"_".join([f"{i[0]}_{i[1]}" for i in sorted(config.other_mutations.items(), key=lambda x: x[0])])+".pdb")
+            assert os.path.isfile(start_protein_path) == True, f"ERROR: Cannot find the equilibrated structure for the base multi-mutant {start_protein_path}. Please check that it exists."
+            # Mutation case 1.            
+            if config.start_residue == pdb.get_residue(lines = io.text_read(start_protein_path), residue_number=config.mutation_resid, ): 
 
-            shutil.copy(src=os.path.join(mutant_protein_path, f"equilibrated_mutant_{config.mutation_resid}_{config.start_residue}.pdb"),
-                dst=os.path.join(mutation_setup_path, "equilibrated_complex.pdb"))
-            shutil.copy(src=os.path.join(mutant_protein_path, f"Ligand_{config.mutation_resid}_{config.start_residue}.mol2"),
-                dst=os.path.join(mutation_setup_path, "Ligand.mol2"))
+                shutil.copy(src=start_protein_path, 
+                    dst=os.path.join(mutation_setup_path, "equilibrated_complex.pdb"))
+                shutil.copy(os.path.join(mutant_protein_path, "Ligand_"+"_".join([f"{i[0]}_{i[1]}" for i in sorted(config.other_mutations.items(), key=lambda x: x[0])])+".mol2"),
+                    dst=os.path.join(mutation_setup_path, "Ligand.mol2"))
+            else: # Mutation case 2
+                mutations = config.other_mutations
+                print(mutations)
+                mutations[config.mutation_resid] = config.start_residue
+                mutations = sorted(mutations.items(), key=lambda x: x[0])
+                start_protein_path = os.path.join(mutant_protein_path, "equilibrated_mutant_"+"_".join([f"{i[0]}_{i[1]}" for i in sorted(config.other_mutations.items(), key=lambda x: x[0])])+".pdb")
+                assert os.path.isfile(start_protein_path) == True, f"ERROR: Cannot find the equilibrated structure for the base multi-mutant {start_protein_path}. Please check that it exists."
+                shutil.copy(src=start_protein_path, 
+                    dst=os.path.join(mutation_setup_path, "equilibrated_complex.pdb"))
+                shutil.copy(os.path.join(mutant_protein_path, "Ligand_"+"_".join([f"{i[0]}_{i[1]}" for i in sorted(config.other_mutations.items(), key=lambda x: x[0])])+".mol2"),
+                    dst=os.path.join(mutation_setup_path, "Ligand.mol2"))
         STATUS.add_steps(stage=stage,
                     steps=[f"equilibrate_protein_{i}" for i in config.ti_windows])
         STATUS.add_steps(stage=stage,
                     steps=[f"equilibrate_complex_{i}" for i in config.ti_windows])
         STATUS.update_step(stage=stage, step="setup", status="complete")
+                
 
     if STATUS.get_status(stage=stage, step="mutate") != "complete":
         # cpptraj.to_pdb(structure_file=f"{md.jobs[-1].inputfile_name}.ncrst",
@@ -303,7 +359,7 @@ def main() -> None:
                        scmask_2=f"':{protein_max_resid+1}'",
                        timask_2=f"':{protein_max_resid+1}'")
 
-    
+
     ti_protein = recipies.equil_ti(mm=ti_protein,
                                 path=mutation_protein_path,
                                 start_structure=ti_protein.start_coordinates,
@@ -368,6 +424,7 @@ def main() -> None:
                 io.text_dump(text=config.hpc.gen_script(command=run_lines), path=os.path.join(window_path, config.hpc.file_name))
                 config.hpc.submit()
                 slurm_id = config.hpc.job.job_id
+                
 
                 # quit()
 
@@ -381,6 +438,8 @@ def main() -> None:
                 job_id = int(STATUS.get_status(stage=stage, step = f"{step}_id"))
                 stat = config.hpc.hpc.check_slurm_status(slurm_id=job_id)
                 print(f"INFO: Job {job_id} is {stat}.")
+                if config.hpc_name == "isambard":
+                    sleep(30)
                 if stat == "CD":
                     config.hpc.hpc.sync(work_dir=window_path, hpc_work_dir=os.path.join(hpc_path, window_path), direction="backward")
                     if lam == 1.0 and structure == "complex":
@@ -389,17 +448,26 @@ def main() -> None:
                         new_pdb = pdb.get_mutant_structure(pdb_file, config.mutation_resid, protein_max_resid+1)
 
                         io.text_dump(new_pdb, os.path.join(window_path, "equilibrated_mutant.pdb"))
-                        io.text_dump(new_pdb, os.path.join(mutant_protein_path, f"equilibrated_mutant_{config.mutation_resid}_{config.mutation_residue}.pdb"))
-                        cpptraj.extract_ligand(structure_file = f"{md.jobs[-1].inputfile_name}.ncrst",
-                                        parm_file = md.parm_file,
+                        if config.multi_mutant:
+                            if config.mutation_resid not in config.other_mutations:
+                                config.other_mutations[config.mutation_resid] = config.mutation_residue
+                            print(sorted(config.other_mutations.items(), key=lambda x: x[0]))
+                            io.text_dump(new_pdb, os.path.join(mutant_protein_path, f"equilibrated_mutant_" + "_".join([f"{i[0]}_{i[1]}" for i in sorted(config.other_mutations.items(), key=lambda x: x[0])])+".pdb"))
+                        else:
+                            io.text_dump(new_pdb, os.path.join(mutant_protein_path, f"equilibrated_mutant_{config.mutation_resid}_{config.mutation_residue}.pdb"))
+                        cpptraj.extract_ligand(structure_file = f"{mm.jobs[-1].inputfile_name}.ncrst",
+                                        parm_file = mm.parm_file,
                                         resid = protein_max_resid+2, # +2 because there is 2 of one residue in the TI file. 
                                         output_file="Ligand.mol2",
                                         path = window_path)
                         shutil.copy(src=os.path.join(window_path,"Ligand.mol2"),
                                     dst=os.path.join(mutant_protein_path,f"Ligand_{config.mutation_resid}_{config.mutation_residue}.mol2"))
+                        shutil.copy(src=os.path.join(window_path,"Ligand.mol2"),
+                                    dst=os.path.join(mutant_protein_path,f"Ligand_"+ "_".join([f"{i[0]}_{i[1]}" for i in sorted(config.other_mutations.items(), key=lambda x: x[0])])+".mol2"))
                     STATUS.update_step(stage=stage, step=step, status="complete", )
                 else:
                     complete=False
+            
             prod_step = f"prod1_{structure}_{lam}"
             # STATUS.add_steps(stage=stage, steps=[prod_step])
             if STATUS.get_status(stage=stage, step=prod_step) == "Not Started":
@@ -413,10 +481,13 @@ def main() -> None:
                 else:
                     break
                 
+                
                 print(f"INFO: equilibration of {structure}, lam={lam} submitted. ID = {mm.jobs[-1].hpc.job.job_id}")
                 STATUS.update_step(stage=stage, step=prod_step, status="submitted")
                 STATUS.update_step(stage=stage, step = f"{prod_step}_id",status=mm.jobs[-1].hpc.job.job_id)
 
+                if config.hpc_name == "isambard":
+                    sleep(30)
             elif STATUS.get_status(stage=stage, step=prod_step) == "submitted": 
                 print("Job submitted to HPC")
                 job_id = int(STATUS.get_status(stage=stage, step = f"{prod_step}_id"))

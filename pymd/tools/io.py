@@ -5,6 +5,11 @@ import os
 import shutil
 import re
 
+try:
+    TERM_SIZE = os.get_terminal_size().columns
+except:
+    TERM_SIZE = 80
+
 def text_dump(text: list[str]|str, path: str) -> None:
     """Prints a text file, 
 
@@ -109,6 +114,7 @@ def make_dir(path: str) -> None:
         os.mkdir(path=path)
     except FileExistsError:
         print(f"INFO: {path} already exists")
+        
 
 def remove_dir(path: str, force: bool = True) -> None:
     """Removes directory in path if it exists, irrespective of contents.

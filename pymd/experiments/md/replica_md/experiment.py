@@ -30,7 +30,7 @@ class config:
     temperature: float = 300.0
     production_time: float = 100 # Time in ns
     replicas: int = 4 # Number of production repicas to run
-    hpc_partition: str = "ampereq"
+    hpc_partition: str = "compchemq"
     hpc_modules: list[str] = ["cuda-12.2.2","amber-uon/gcc11.3.0/24" ]
     hpc_base_path: str = "/gpfs01/home/brara83/pyMD_WorkDir/"
 
@@ -41,10 +41,18 @@ def main():
     optional = parser.add_argument_group("Optional arguments:")
     optional.add_argument("-t", "--temp", help="Temperature to run the simulation at", type=float, required=False, default=300.0)
     optional.add_argument("-pt", "--production_time", help="Length of production simulation", type=float, required=False, default=100)
+    optional.add_argument("--hpc", action="store_true")
+    optional.add_argument("-p", "--partition", help="The partition to run on the hpc", type=str, required=False, default="ampereq")
 
     args = parser.parse_args()
     config.temperature = float(args.temp)
     config.production_time = int(args.production_time)
+    config.hpc_partition = str(args.partition)
+
+    if args.hpc:
+        pre_prod_hpc = True
+    else:
+        pre_prod_hpc = False
 
 
 
@@ -111,15 +119,57 @@ def main():
         for i in [config.base_pdb, config.parmfile, config.start_structure]:
             shutil.copy(i, os.path.join(pre_prod_path, i))
         STATUS.update_step("setup", "file_man", "complete" )
+
+    slurm_id = None
+    if args.hpc:
+        # hpc.hpc.sync(work_dir=hpc.local_file_dir, hpc_work_dir=hpc_path, direction="forward")
+        hpc.define_dirs(local_file_path=pre_prod_path, hpc_file_path=os.path.join(hpc_path,pre_prod_path))
+        run_lines = []
         
-    for job in md.jobs:
-        step_name = job.inputfile_name.replace(".in","")
-        if STATUS.get_status("setup", step_name) != "complete":
-            job.exe()
-            STATUS.update_step("setup", step_name, "complete" )
+
+        for job in md.jobs:
+            step_name = job.inputfile_name.replace(".in","")
+            job_stat = STATUS.get_status(stage="setup", step=step_name)
+            if job_stat == "Not Started":
+                job.update_run_path(pre_prod_path)
+                job.gen_input_file()
+                run_lines.append(job.gen_run_lines())
+            elif STATUS.get_status(stage="setup", step="pre-prod") == "submitted":
+                job_id = int(STATUS.get_status(stage="setup", step = f"pre-prod_id"))
+                slurm_id = job_id
+                stat = hpc.hpc.check_slurm_status(slurm_id=job_id)
+                if stat == "CD":
+                    hpc.hpc.sync(work_dir=pre_prod_path, hpc_work_dir=os.path.join(hpc_path, pre_prod_path), direction="backward")
+                    STATUS.update_step(stage="setup", step="pre-prod", status="complete" )
+                    STATUS.update_step(stage="setup", step=step_name, status="complete" )
+
+        if len(run_lines) > 0:
+            print(run_lines)
+            hpc.add_dependency(dependency=None)
+            io.text_dump(text=hpc.gen_script(command=run_lines), path=os.path.join(pre_prod_path, hpc.file_name))
+            hpc.submit()
+            slurm_id = hpc.job.job_id
+            STATUS.update_step(stage="setup", step="pre-prod", status="submitted")
+            STATUS.update_step(stage="setup", step="pre-prod_id", status=slurm_id)
+            for job in md.jobs:
+                step_name = job.inputfile_name.replace(".in","")
+                job_stat = STATUS.get_status(stage="setup", step=step_name)
+                if job_stat == "Not Started":
+                    STATUS.update_step("setup", step_name, "submitted" )
+        if STATUS.get_status("setup", "pre-prod") ==  "submitted":
+            quit()
+    else:
+        for job in md.jobs:
+            step_name = job.inputfile_name.replace(".in","")
+
+            job_stat = STATUS.get_status(stage="setup", step=step_name)
+            if job_stat != "complete":
+                job.exe()
+                STATUS.update_step("setup", step_name, "complete" )
     
 
     production_path = "./prod"
+    hpc.define_dirs(local_file_path=production_path, hpc_file_path=os.path.join(hpc_path,production_path))
     if hasattr(STATUS, "production") is False:
         steps = ["setup"]
         for i in range(config.replicas):
@@ -132,9 +182,9 @@ def main():
         io.make_dir(production_path)
         shutil.copy(os.path.join(pre_prod_path, prod_start_structure), os.path.join(production_path, prod_start_structure))
         shutil.copy(os.path.join(pre_prod_path, config.parmfile), os.path.join(production_path, config.parmfile))
-        hpc.hpc.make_dir(hpc.hpc_run_dir)
-        hpc.hpc.sync(work_dir=hpc.local_file_dir, hpc_work_dir=hpc.hpc_run_dir, direction="forward")
-        hpc.define_dirs(local_file_path=production_path, hpc_file_path=os.path.join(hpc.hpc_run_dir,production_path))
+        # hpc.hpc.make_dir(hpc.hpc_run_dir)
+        hpc.hpc.sync(work_dir=hpc.local_file_dir, hpc_work_dir=hpc_path, direction="forward")
+        
         hpc.hpc.make_dir(hpc.hpc_run_dir)
         STATUS.update_step("production", "setup", "complete" )
     

@@ -78,6 +78,8 @@ def get_residue(lines: list[str], residue_number: int, chain: str = "A"):
         if line.startswith('ATOM') or line.startswith('HETATM'):
             current_residue_number = int(line[22:26].strip())
             current_chain = line[21:22].strip()
+            if current_chain == "":
+                current_chain = chain
             if current_residue_number == residue_number and current_chain == chain:
                 residue_name = line[17:20].strip()
                 return residue_name
@@ -91,6 +93,7 @@ def get_mutant_structure(lines: list[str], delete_resid: int, replace_resid: int
         if line.startswith('ATOM') or line.startswith('HETATM'):
             current_residue_number = int(line[22:26].strip())
             current_chain = line[21:22].strip()
+            
             if current_chain == "":
                 current_chain = chain
             if current_residue_number == delete_resid and current_chain == chain:

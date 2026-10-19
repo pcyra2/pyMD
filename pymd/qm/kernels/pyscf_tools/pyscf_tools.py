@@ -29,12 +29,29 @@ else:
 from pprint import pprint
 # from pyscf.qsdopt.qsd_optimizer import QSD #TODO add importlib to this. 
 
-def gen_mol(atoms: Molecule|list,
+def gen_mol(atoms: Molecule|list|str,
             basis: str = "sto-3g",
             charge: int = 0,
             spin: int = 0,
             memory: int = 1000,
             name: str = "mol.out") -> pyscf.gto.Mole:
+    """
+    Generates a pySCF gto.Mole object
+
+    Args:
+        atoms (Molecule | list | str): The atoms, either as a molecule object, a list of atom objects, a list of strings where each string is `atom x y z`, or a string which is either the pySCF atom string or a file path.
+        basis (str, optional): The basis set for the molecule. Defaults to "sto-3g".
+        charge (int, optional): The total charge of the molecule. Defaults to 0.
+        spin (int, optional): The spin multiplicity of the molecule (2S not 2S+1). Defaults to 0.
+        memory (int, optional): The memory limit for the calculation. Defaults to 1000.
+        name (str, optional): The name of the output file. Defaults to "mol.out".
+
+    Raises:
+        TypeError: If the atoms argument is not of type Molecule, list of Atom, list of str, or str.
+
+    Returns:
+        mol (pyscf.gto.Mole): The generated pySCF molecule object.
+    """
     if isinstance(atoms, Molecule): 
         text = ""
         for at in atoms.atoms:

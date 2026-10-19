@@ -1,6 +1,8 @@
 """#TODO
 """
 import numpy
+import os
+from pymd.tools.io import text_read
 
 class Atom:
     """Class containing atom information
@@ -10,13 +12,27 @@ class Atom:
         x (float): X-coordinate of the atom in Angstrom
         y (float): Y-coordinate of the atom in Angstrom
         Z (float): Z-coordinate of the atom in Angstrom
-        atom_type (str): Atom type for the respective forcefield
+        chain (str|None): The chain identifier for the atom. Defaults to None
+        atom_type (str|None): Atom type for the respective forcefield. Defaults to None
+        resname (str|None): Residue Name. Defaults to None
+        resid (int|None): Residue index. Defaults to None
+        occ (float|None): Occupancy column value in the PDB file. Defaults to None
+        beta (float|None): Beta column value in the PDB file. Defaults to None
+        pdb_prefix (str): The start str for a PDB file. Defaults to `ATOM`
     """
     element: str
     x: float
     y: float
     z: float
-    atom_type: str
+    charge: float = 0.0
+    chain: str|None = None
+    atom_type: str|None = None
+    resname: str|None = None
+    resid: int|None = None
+    occ: float = 1.00
+    beta: float = 0.00
+    pdb_prefix: str = "ATOM"
+    index: int|None = None
 
     def __init__(self, element: str, x: float, y: float, z: float) -> None:
         """Initialises the atom object
@@ -72,6 +88,99 @@ class Atom:
             atom_type (str): Atom type to be allocated to this atom
         """
         self.atom_type = atom_type
+
+
+    def add_residue_information(self, resname: str, resid: int, chain: str|None = None) -> None:
+        """Adds residue informaiton to allow for PDB compatibility
+
+        ArgS:
+            resname (str): Name of residue
+            resid (int): Index of residue
+            chain (str): Chain that the residue is in
+        """
+        self.resname = resname
+        self.resid = resid
+        self.chain = chain
+    
+
+    def add_occ_beta(self, occupancy: float = 1.00, beta: float = 0.00) -> None:
+        """Adds the occupancy and beta information into the atom. Useful when creating PDB files. 
+        """
+        self.occ = occupancy
+        self.beta = beta
+
+
+    def change_prefix(self, prefix: str) -> None:
+        """Allows for the adjustment of prefix in a pdb file. 
+
+        Args:
+            prefix (str): The prefix in a pdb file.
+                Default is ATOM. But can also be HETATM.
+        """
+        self.pdb_prefix = prefix
+
+
+    def add_index(self, index: int) -> None:
+        """Adds an index to the atom
+
+        Args:
+            index (int): The index of the atom
+        """
+        self.index = index
+
+
+    def add_charge(self, charge: float, pdb_col: str = "end") -> None:
+        """Allows for the addition of a partial charge to the atom
+
+        Args:
+            charge (float): The charge of the atom
+            pdb_col (str): Where to add it in the pdb file. Options are either `end`, `occ` or `beta`.
+                Defaults to `end`.
+        """
+        self.charge = charge
+        if pdb_col == "occ":
+            self.occ = charge
+        if pdb_col == "beta":
+            self.beta = charge
+
+
+    def update_coordinates(self, x: float, y: float, z: float) -> None:
+        """Allows for direct manipulation of coordinates"""
+        self.x = x
+        self.y = y
+        self.z = z
+
+
+    def _pdb_lines(self) -> str:
+        if self.atom_type is None:
+            self.atom_type = self.element
+        if self.chain is None:
+            self.chain = " "
+        string = "{0:6}{1:5} {2:4}{3:1}{4:3} {5:1}{6:4}{7:1}   {8:8}{9:8}{10:8}{11:6}{12:6}      {13:4}{14:2}{15:2}".format(self.pdb_prefix,
+                                                    self.index,
+                                                    self.atom_type.ljust(4),
+                                                    " ", #Alternate location indicator
+                                                    self.resname.rjust(3),
+                                                    self.chain,
+                                                    str(self.resid).rjust(4),
+                                                    " ", #Code for insertions of residues
+                                                    str(round(self.x,3)).rjust(8),
+                                                    str(round(self.y,3)).rjust(8),
+                                                    str(round(self.z,3)).rjust(8),
+                                                    str(self.occ).rjust(6),
+                                                    str(self.beta).rjust(6),
+                                                    " ".ljust(4),
+                                                    self.element.rjust(2),
+                                                    str(round(self.charge)).rjust(2)
+                                                    )
+        return string
+        
+
+    def _xyz_lines(self, charges: bool = False):
+        string = f"{self.element}\t{self.x}\t{self.y}\t{self.z}"
+        if charges:
+            string += f"\t{self.charge}"
+        return string
 
 
 class Bond:
@@ -152,7 +261,17 @@ class Molecule:
         """
         if isinstance(lines, str):
             lines = lines.split(sep="\n")
-        self.nat = int(lines[0])
+        try:
+            self.nat = int(lines[0])
+        except ValueError:
+            if isinstance(lines, list):
+                lines = lines[0]
+            if os.path.isfile(lines):
+                lines = text_read(lines)
+                self.nat = int(lines[0])
+            else:
+                print(f"XYZ file not understood, lines are : {lines}")
+                
         atoms = [Atom]*self.nat
         for i in range(self.nat):
             items = lines[i+2].split()

@@ -1,7 +1,11 @@
 """#TODO"""
+import pandas
 
 from pymd.tools.structure import Molecule
 from pymd.tools import io
+from pymd.tools.slurm import Slurm
+
+
 
 class QM:
     """Base class for all QM calculations
@@ -67,7 +71,7 @@ class QM:
             cores (int): Number of CPU cores to run the calculation on. 
         """
         if isinstance(coordinates, Molecule):
-            print("Molecule object passed as argument")
+            # print("Molecule object passed as argument")
             self._input_coordinate_file = None
             self._input_coordinates = coordinates
             self._charge = charge
