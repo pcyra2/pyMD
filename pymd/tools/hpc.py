@@ -76,7 +76,7 @@ class HPC:
     login_node: str
     name: str
     username: str
-    _spoof: bool = False
+    _spoof: bool 
 
     def __init__(self, name: str, login_node: str, username: str|None = None) -> None:
         """Initializes the HPC class. This allows allocation of name and how to connect
@@ -97,7 +97,7 @@ class HPC:
                 self.username = "brara83"
         else:
             self.username = username
-
+        self._spoof = False
 
     def spoof(self) -> None:
         self._spoof = True
@@ -237,7 +237,7 @@ class HPC:
             return "CD"
 
     def check_slurm_array_status(self, slurm_id: int) -> str:
-        if self._spoof:
+        if self._spoof == False:
             output = self._run_remote_command(command="squeue -u $USER")
             stdout = output.stdout
             for line in stdout.rsplit(sep="\n"):

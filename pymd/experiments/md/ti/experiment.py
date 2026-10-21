@@ -107,6 +107,7 @@ def main() -> None:
                                 "export CUDA_MATH_LIB=/opt/nvidia/hpc_sdk/Linux_aarch64/24.11/math_libs/12.6/targets/sbsa-linux/lib",
                                 "export LD_LIBRARY_PATH=$CUDA_MATH_LIB:$LD_LIBRARY_PATH",
                                 "source /home/u6we/brara83.u6we/Software/pmemd26/amber.sh"])
+        config.hpc.hpc.spoof()
     else:
         raise ValueError(f"HPC {config.hpc_name} not recognized.")
 
@@ -438,7 +439,7 @@ def main() -> None:
                 job_id = int(STATUS.get_status(stage=stage, step = f"{step}_id"))
                 stat = config.hpc.hpc.check_slurm_status(slurm_id=job_id)
                 print(f"INFO: Job {job_id} is {stat}.")
-                if config.hpc_name == "isambard":
+                if config.hpc_name == "isambard" and config.hpc.hpc._spoof == False:
                     sleep(30)
                 if stat == "CD":
                     config.hpc.hpc.sync(work_dir=window_path, hpc_work_dir=os.path.join(hpc_path, window_path), direction="backward")
@@ -448,7 +449,6 @@ def main() -> None:
                         new_pdb = pdb.get_mutant_structure(pdb_file, config.mutation_resid, protein_max_resid+1)
 
                         io.text_dump(new_pdb, os.path.join(window_path, "equilibrated_mutant.pdb"))
-<<<<<<< HEAD
                         if config.multi_mutant:
                             if config.mutation_resid not in config.other_mutations:
                                 config.other_mutations[config.mutation_resid] = config.mutation_residue
@@ -456,9 +456,6 @@ def main() -> None:
                             io.text_dump(new_pdb, os.path.join(mutant_protein_path, f"equilibrated_mutant_" + "_".join([f"{i[0]}_{i[1]}" for i in sorted(config.other_mutations.items(), key=lambda x: x[0])])+".pdb"))
                         else:
                             io.text_dump(new_pdb, os.path.join(mutant_protein_path, f"equilibrated_mutant_{config.mutation_resid}_{config.mutation_residue}.pdb"))
-=======
-                        io.text_dump(new_pdb, os.path.join(mutant_protein_path, f"equilibrated_mutant_{config.mutation_resid}_{config.mutation_residue}.pdb"))
->>>>>>> b79617f3573ee28411f80ceefaa8effd2eb07590
                         cpptraj.extract_ligand(structure_file = f"{mm.jobs[-1].inputfile_name}.ncrst",
                                         parm_file = mm.parm_file,
                                         resid = protein_max_resid+2, # +2 because there is 2 of one residue in the TI file. 
@@ -490,7 +487,7 @@ def main() -> None:
                 STATUS.update_step(stage=stage, step=prod_step, status="submitted")
                 STATUS.update_step(stage=stage, step = f"{prod_step}_id",status=mm.jobs[-1].hpc.job.job_id)
 
-                if config.hpc_name == "isambard":
+                if config.hpc_name == "isambard" and config.hpc.hpc._spoof == False:
                     sleep(30)
             elif STATUS.get_status(stage=stage, step=prod_step) == "submitted": 
                 print("Job submitted to HPC")

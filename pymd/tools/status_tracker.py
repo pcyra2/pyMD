@@ -1,4 +1,5 @@
 import dataclasses
+import os
 
 from pymd.tools import io
 
@@ -37,6 +38,8 @@ class StatusTracker:
         self._file_path = file_path
         for stage in stages:
             setattr(self, stage, StageData())
+        if os.path.isfile(file_path):
+            self.from_dict()
     
     def add_stage(self, stage: str, steps: list[str]|None):
         if steps is None:
